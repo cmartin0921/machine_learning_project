@@ -23,14 +23,14 @@ def test_data_functions_are_importable_and_callable():
 
 def test_feature_engineering_functions_are_importable_and_callable():
     from ml_project.feature_engineering import (
-        data_imputation_fix,
+        impute_missing_data,
         remove_outliers,
         one_hot_encoding,
         scaling,
         generate_features,
     )
 
-    assert callable(data_imputation_fix)
+    assert callable(impute_missing_data)
     assert callable(remove_outliers)
     assert callable(one_hot_encoding)
     assert callable(scaling)
