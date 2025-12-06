@@ -4,19 +4,17 @@ def test_can_import_root_package():
 
 
 def test_can_import_subpackages():
-    import ml_project.data
-    import ml_project.feature_engineering
-    import ml_project.models
-    import ml_project.evaluation
+    from ml_project import data, feature_engineering, models, evaluation
 
-    assert ml_project.data is not None
-    assert ml_project.feature_engineering is not None
-    assert ml_project.models is not None
-    assert ml_project.evaluation is not None
+    assert data is not None
+    assert feature_engineering is not None
+    assert models is not None
+    assert evaluation is not None
 
 
 def test_data_functions_are_importable_and_callable():
     from ml_project.data import load_raw_data, clean_data
+
     assert callable(load_raw_data)
     assert callable(clean_data)
 
