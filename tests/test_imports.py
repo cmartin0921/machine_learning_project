@@ -1,3 +1,5 @@
+# pylint: disable=import-outside-toplevel
+
 def test_can_import_root_package():
     import ml_project
     assert ml_project is not None
