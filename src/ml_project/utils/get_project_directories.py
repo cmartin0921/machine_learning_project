@@ -17,6 +17,7 @@ def get_project_directories():
     paths = {
         "root": root_dir,
         "src": root_dir / "src",
+        "configs": root_dir / "configs",
         "notebooks": root_dir / "notebooks",
         "data": root_dir / "data",
         "data_raw": root_dir / "data" / "raw",

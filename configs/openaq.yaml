@@ -1,0 +1,9 @@
+openaq:
+  coordinates:
+    latitude: 52.237049
+    longitude: 21.017532
+  radius: 10000
+  limit: 1
+  outputs:
+    locations: location_dataset.csv
+    sensors: sensor_dataset.csv
