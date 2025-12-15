@@ -1,13 +1,12 @@
 import os
 import csv
-from pathlib import Path
 from openaq import OpenAQ
 from dotenv import load_dotenv
+from ml_project.utils import get_project_directories
 
-cur_dir = Path(__file__).resolve()
-root_dir = cur_dir.parent.parent
-env_path = root_dir / ".env"
-load_dotenv(dotenv_path=env_path) 
+directory_paths_dict = get_project_directories()
+env_path = directory_paths_dict["root"] / ".env"
+load_dotenv(dotenv_path=env_path)
 
 open_aq_api = os.getenv("OPEN_AQ_API_KEY")
 client = OpenAQ(api_key=open_aq_api)
