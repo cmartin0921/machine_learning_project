@@ -12,24 +12,23 @@ load_dotenv(dotenv_path=env_path)
 open_aq_api = os.getenv("OPEN_AQ_API_KEY")
 client = OpenAQ(api_key=open_aq_api)
 
-
 open_aq_yaml_file = directory_paths_dict["configs"] / "openaq.yaml"
 with open_aq_yaml_file.open("r", encoding="utf-8") as f:
     open_aq_cfg = yaml.safe_load(f)["openaq"]
 
-locations_result = client.locations.list(
+locations_response = client.locations.list(
     coordinates=(
         open_aq_cfg["coordinates"]["latitude"],
         open_aq_cfg["coordinates"]["longitude"]
     ),
     radius=open_aq_cfg["radius"],
     limit=open_aq_cfg["limit"]
-).results
+)
 
 location_data_list = []
 sensor_ids = []
-for l in locations_result:
-    sensor_data_list = []
+sensor_data_list = []
+for l in locations_response.results:
     for s in l.sensors:
         sensor_row_dict = {
             "sensor_id": s.id,
@@ -68,11 +67,13 @@ with open(locations_file_loc, 'w', encoding="utf-8", newline='') as csvfile:
 
 sensor_data_list = []
 for s in sensor_ids:
-    sensor_result = client.measurements.list(
+    sensor_response = client.measurements.list(
         sensors_id=s,
+        datetime_from=open_aq_cfg["daterange"]["min"],
+        datetime_to=open_aq_cfg["daterange"]["max"],
         limit=open_aq_cfg["limit"]
     )
-    for sd in sensor_result.results:
+    for sd in sensor_response.results:
         sensor_data_row_dict = {
             "sensor_id": s,
             "datetime_from": sd.period.datetime_from.utc,
@@ -93,6 +94,3 @@ with open(sensors_file_loc, 'w', encoding="utf-8", newline='') as csvfile:
 
 print("done")
 client.close()
-
-
-# Sensor IDS: 10776 / 35996,  10775 / 35986, 
