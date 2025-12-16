@@ -44,9 +44,10 @@ def iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]
 
         page += 1
 
-def iter_sensor_measurements(client, sensor_id: int, open_aq_cfg: Dict) -> Iterable[dict]:
+def iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
     """Yield measurement rows for a sensor across all pages."""
     page = 1
+
     while True:
         sensor_data_response = client.measurements.list(
             sensors_id=sensor_id,
@@ -56,13 +57,14 @@ def iter_sensor_measurements(client, sensor_id: int, open_aq_cfg: Dict) -> Itera
             rollup=open_aq_cfg["rollup"],
             page=page,
         )
+        print(f"Sensor ID: {sensor_id} at page {page} with results length of {len(sensor_data_response.results)}")
 
         # Exists when there are no longer any results from pagination
         if not sensor_data_response.results:
             break
 
         for sd in sensor_data_response.results:
-            yield {
+            sensor_measurement_row = {
                 "sensor_id": sensor_id,
                 "datetime_from": sd.period.datetime_from.utc,
                 "datetime_to": sd.period.datetime_to.utc,
@@ -71,6 +73,8 @@ def iter_sensor_measurements(client, sensor_id: int, open_aq_cfg: Dict) -> Itera
                 "metric_name": sd.parameter.name,
                 "units": sd.parameter.units,
             }
+
+            yield sensor_measurement_row
 
         page += 1
 

@@ -7,7 +7,7 @@ openaq:
     min: 2025-01-01 00:00:00
     max: 2025-01-10 00:00:00
   limit: 1000 # Max amount is 1000
-  rollup: daily # daily, yearly, hourly
+  rollup: hourly # daily, yearly, hourly
   outputs:
     locations: locations_dataset.csv
     sensors_metadata: sensors_metadata.csv

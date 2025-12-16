@@ -58,6 +58,25 @@ for location_row, sensor_list in iter_locations(client, open_aq_cfg):
         sensor_id_list = [s["sensor_id"] for s in sensor_list]
         sensor_full_list.extend(sensor_id_list)
 
+for s_id in sensor_full_list:
+    time.sleep(2)
+    sensor_measurement_row = iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
+
+    to_add = next(sensor_measurement_row, None)
+    if to_add is not None:
+        sensors_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_measurement"]
+        col_names = to_add.keys()
+        file_exists = os.path.isfile(sensors_file_loc)
+
+        with open(sensors_file_loc, 'a', encoding="utf-8", newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=col_names)
+
+            # Only writes the header on first creation
+            if not file_exists:
+                writer.writeheader()
+
+            for r in to_add:
+                writer.writerow(to_add)
 
 # sensor_data_list = []
 # for s in sensor_ids:
