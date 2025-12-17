@@ -11,39 +11,38 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
     # Step 1: Extract locations and sensors (within said locations) metadata.
     # The data for locations is written to a .csv file. Furthermore, a list
     # of sensor ids are stored separately.
-    for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
-        if location_data is not None:
-            locations_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["locations"]
-            col_names = list(location_data.keys())
-            file_exists = os.path.isfile(locations_file_loc)
+    locations_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["locations"]
+    sensors_meta_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_metadata"]
 
-            with open(locations_file_loc, "a", encoding="utf-8", newline="") as f:
-                locations_writer = csv.DictWriter(f, fieldnames=col_names)
+    locations_file_exists = os.path.isfile(locations_file_loc)
+    sensors_file_exists = os.path.isfile(sensors_meta_file_loc)
 
-                if not file_exists:
+    with open(
+        locations_file_loc, "a", encoding="utf-8", newline=""
+    ) as location_f, open(
+        sensors_meta_file_loc, "a", encoding="utf-8", newline=""
+    ) as sensor_f:
+        for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
+            if location_data is not None:
+                location_col_names = list(location_data.keys())
+                locations_writer = csv.DictWriter(location_f, fieldnames=location_col_names)
+                if not locations_file_exists:
                     locations_writer.writeheader()
+                    locations_file_exists = True
 
                 locations_writer.writerow(location_data)
 
-        # Note: sensor_list is a List[Dict]; each sensor extract in the location from
-        #       iter_locations is a Dict
-        if len(sensor_list) > 0:
-            sensors_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_metadata"]
-            col_names = list(sensor_list[0].keys())
-            file_exists = os.path.isfile(sensors_file_loc)
-
-            with open(sensors_file_loc, "a", encoding="utf-8", newline="") as f:
-                sensors_writer = csv.DictWriter(f, fieldnames=col_names)
-
-                if not file_exists:
+            if sensor_list is not None:
+                sensor_col_names = list(sensor_list[0].keys())
+                sensors_writer = csv.DictWriter(sensor_f, fieldnames=sensor_col_names)
+                if not sensors_file_exists:
                     sensors_writer.writeheader()
+                    sensors_file_exists = True
 
                 sensors_writer.writerows(sensor_list)
 
-            # Do not need full information of sensors that was just written in .csv
-            # Only need the sensor_id in order to extracts measurements from sensor via id
-            sensor_id_list = [s["sensor_id"] for s in sensor_list]
-            sensor_full_list.extend(sensor_id_list)
+                sensor_id_list = [s["sensor_id"] for s in sensor_list]
+                sensor_full_list.extend(sensor_id_list)
 
     if len(sensor_full_list) > 0:
         sensors_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_measurement"]
@@ -67,10 +66,6 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
                     writer.writerow(first_row)
                     for row in to_write:
                         writer.writerow(row)
-
-
-
-
 
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
     """Yield location row dicts that satisfy the configured date filter."""
