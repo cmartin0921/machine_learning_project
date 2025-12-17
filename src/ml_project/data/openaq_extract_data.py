@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
-    sensor_full_list = []
+    sensor_full_set = set()
     # Step 1: Extract locations and sensors (within said locations) metadata.
     # The data for locations is written to a .csv file. Furthermore, a list
     # of sensor ids are stored separately.
@@ -42,14 +42,14 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
                 sensors_writer.writerows(sensor_list)
 
                 sensor_id_list = [s["sensor_id"] for s in sensor_list]
-                sensor_full_list.extend(sensor_id_list)
+                sensor_full_set.update(sensor_id_list)
 
-    if len(sensor_full_list) > 0:
+    if len(sensor_full_set) > 0:
         sensors_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_measurement"]
         file_exists = os.path.isfile(sensors_file_loc)
 
         with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
-            for s_id in sensor_full_list:
+            for s_id in sorted(sensor_full_set):
                 time.sleep(2)  # TODO: rate-limit handling
                 to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
 
