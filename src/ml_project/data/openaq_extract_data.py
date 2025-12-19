@@ -41,7 +41,7 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
                 sensors_writer.writerows(sensor_list)
 
-                sensor_id_list = [s["sensor_id"] for s in sensor_list]
+                sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sensors_to_skip"]]
                 sensor_full_set.update(sensor_id_list)
 
     if len(sensor_full_set) > 0:
@@ -50,7 +50,11 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
         with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
             for s_id in sorted(sensor_full_set):
-                time.sleep(2)  # TODO: rate-limit handling
+                time.sleep(5)  # TODO: rate-limit handling
+                if open_aq_cfg["last_added_sensor"] is not None:
+                    if open_aq_cfg["last_added_sensor"] > s_id:
+                        continue
+                
                 to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
 
                 # Needed in order to get the keys that will be the header of the .csv file
@@ -112,17 +116,17 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
 
 def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
     page = 1
-
     while True:
-        time.sleep(0.5) # TODO: rate-limit handling
+        time.sleep(1.5) # TODO: rate-limit handling
         sensor_data_response = client.measurements.list(
-            sensors_id=sensor_id,
-            datetime_from=open_aq_cfg["daterange"]["min"],
-            datetime_to=open_aq_cfg["daterange"]["max"],
-            limit=open_aq_cfg["limit"],
-            rollup=open_aq_cfg["rollup"],
-            page=page,
+                sensors_id=sensor_id,
+                datetime_from=open_aq_cfg["daterange"]["min"],
+                datetime_to=open_aq_cfg["daterange"]["max"],
+                limit=open_aq_cfg["limit"],
+                rollup=open_aq_cfg["rollup"],
+                page=page,
         )
+        
         print(f"Sensor ID: {sensor_id} at page {page} with results length of {len(sensor_data_response.results)}")
 
         # Exists when there are no longer any results from pagination
@@ -149,11 +153,11 @@ def _extract_sensors_from_location(location_result) -> List[dict]:
     sensor_location_list = []
     for s in location_result.sensors:
         sensor_location_list.append({
-                "sensor_id": s.id,
-                "measurement": s.parameter.display_name,
-                "measurement_name": s.parameter.name,
-                "units": s.parameter.units,
-                "location_id": location_result.id,
+            "sensor_id": s.id,
+            "measurement": s.parameter.display_name,
+            "measurement_name": s.parameter.name,
+            "units": s.parameter.units,
+            "location_id": location_result.id,
         })
 
     return sensor_location_list

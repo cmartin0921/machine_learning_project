@@ -7,8 +7,7 @@ import yaml
 
 from openaq import OpenAQ
 from ml_project.utils import (
-    get_project_directories,
-    write_to_csv
+    get_project_directories
 )
 from ml_project.data import (
     openaq_extract_data
