@@ -1,8 +1,5 @@
 import os
-import csv
-import time
 from dotenv import load_dotenv
-from datetime import datetime, timezone
 import yaml
 
 from openaq import OpenAQ
