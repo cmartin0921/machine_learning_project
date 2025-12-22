@@ -11,8 +11,8 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
     # Step 1: Extract locations and sensors (within said locations) metadata.
     # The data for locations is written to a .csv file. Furthermore, a list
     # of sensor ids are stored separately.
-    locations_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["locations"]
-    sensors_meta_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_metadata"]
+    locations_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["locations"]
+    sensors_meta_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_metadata"]
 
     locations_file_exists = os.path.isfile(locations_file_loc)
     sensors_file_exists = os.path.isfile(sensors_meta_file_loc)
@@ -41,18 +41,18 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
                 sensors_writer.writerows(sensor_list)
 
-                sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sensors_to_skip"]]
+                sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
                 sensor_full_set.update(sensor_id_list)
 
     if len(sensor_full_set) > 0:
-        sensors_file_loc = directory_paths_dict["data_raw"] / open_aq_cfg["outputs"]["sensors_measurement"]
+        sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
         file_exists = os.path.isfile(sensors_file_loc)
 
         with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
             for s_id in sorted(sensor_full_set):
                 time.sleep(5)  # TODO: rate-limit handling
-                if open_aq_cfg["last_added_sensor"] is not None:
-                    if open_aq_cfg["last_added_sensor"] > s_id:
+                if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
+                    if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
                         continue
                 
                 to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
@@ -77,11 +77,11 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
     while True:
         location_response = client.locations.list(
             coordinates=(
-                open_aq_cfg["coordinates"]["latitude"],
-                open_aq_cfg["coordinates"]["longitude"],
+                open_aq_cfg["data"]["coordinates"]["latitude"],
+                open_aq_cfg["data"]["coordinates"]["longitude"],
             ),
-            radius=open_aq_cfg["radius"],
-            limit=open_aq_cfg["limit"],
+            radius=open_aq_cfg["data"]["radius"],
+            limit=open_aq_cfg["paging"]["limit"],
             page=page,
         )
 
@@ -107,7 +107,7 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
 
             # Excludes sensors that do not have data within the date params passed
             last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
-            min_dt = open_aq_cfg["daterange"]["min"].replace(tzinfo=timezone.utc)
+            min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
             if last_read >= min_dt:
                 sensor_list = _extract_sensors_from_location(l)
                 yield location_data_dict, sensor_list
@@ -119,12 +119,12 @@ def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iter
     while True:
         time.sleep(1.5) # TODO: rate-limit handling
         sensor_data_response = client.measurements.list(
-                sensors_id=sensor_id,
-                datetime_from=open_aq_cfg["daterange"]["min"],
-                datetime_to=open_aq_cfg["daterange"]["max"],
-                limit=open_aq_cfg["limit"],
-                rollup=open_aq_cfg["rollup"],
-                page=page,
+            sensors_id=sensor_id,
+            datetime_from=open_aq_cfg["time"]["start"],
+            datetime_to=open_aq_cfg["time"]["end"],
+            limit=open_aq_cfg["paging"]["limit"],
+            rollup=open_aq_cfg["time"]["rollup"],
+            page=page
         )
         
         print(f"Sensor ID: {sensor_id} at page {page} with results length of {len(sensor_data_response.results)}")
@@ -138,7 +138,7 @@ def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iter
                 "sensor_id": sensor_id,
                 "datetime_from": sd.period.datetime_from.utc,
                 "datetime_to": sd.period.datetime_to.utc,
-                "timestamp_rollup": open_aq_cfg["rollup"],
+                "timestamp_rollup": open_aq_cfg["time"]["rollup"],
                 "value": sd.value,
                 "metric_name": sd.parameter.name,
                 "units": sd.parameter.units,
