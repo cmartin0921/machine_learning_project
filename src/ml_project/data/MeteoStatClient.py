@@ -2,13 +2,12 @@ import requests
 
 class MeteoStatClient():
 
-    def __init__(self, api_key: str, api_host: str = "meteostat.p.rapidapi.com", timeout: int = 10):
+    def __init__(self, api_key: str, base_url: str = "meteostat.p.rapidapi.com", timeout: int = 10):
         self.api_key = api_key
-        self.api_host = api_host
         self.base_url = "https://meteostat.p.rapidapi.com"
         self.headers = {
             "X-RapidAPI-Key": self.api_key,
-            "X-RapidAPI-Host": self.api_host,
+            "X-RapidAPI-Host": base_url
         }
         self.timeout = timeout
 
