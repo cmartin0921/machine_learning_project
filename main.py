@@ -50,5 +50,7 @@ def main():
 
     open_aq_client.close()
 
+    
+
 if __name__ == "__main__":
     main()
