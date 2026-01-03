@@ -17,32 +17,34 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
     locations_file_exists = os.path.isfile(locations_file_loc)
     sensors_file_exists = os.path.isfile(sensors_meta_file_loc)
 
-    with open(
-        locations_file_loc, "a", encoding="utf-8", newline=""
-    ) as location_f, open(
-        sensors_meta_file_loc, "a", encoding="utf-8", newline=""
-    ) as sensor_f:
-        for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
-            if location_data is not None:
-                location_col_names = list(location_data.keys())
-                locations_writer = csv.DictWriter(location_f, fieldnames=location_col_names)
-                if not locations_file_exists:
-                    locations_writer.writeheader()
-                    locations_file_exists = True
+    # Only go through OpenAQ if files do not exist internally
+    if not (locations_file_exists and sensors_file_exists):
+        with open(
+            locations_file_loc, "w", encoding="utf-8", newline=""
+        ) as location_f, open(
+            sensors_meta_file_loc, "w", encoding="utf-8", newline=""
+        ) as sensor_f:
+            for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
+                if location_data is not None:
+                    location_col_names = list(location_data.keys())
+                    locations_writer = csv.DictWriter(location_f, fieldnames=location_col_names)
+                    if not locations_file_exists:
+                        locations_writer.writeheader()
+                        locations_file_exists = True
 
-                locations_writer.writerow(location_data)
+                    locations_writer.writerow(location_data)
 
-            if sensor_list is not None:
-                sensor_col_names = list(sensor_list[0].keys())
-                sensors_writer = csv.DictWriter(sensor_f, fieldnames=sensor_col_names)
-                if not sensors_file_exists:
-                    sensors_writer.writeheader()
-                    sensors_file_exists = True
+                if sensor_list is not None:
+                    sensor_col_names = list(sensor_list[0].keys())
+                    sensors_writer = csv.DictWriter(sensor_f, fieldnames=sensor_col_names)
+                    if not sensors_file_exists:
+                        sensors_writer.writeheader()
+                        sensors_file_exists = True
 
-                sensors_writer.writerows(sensor_list)
+                    sensors_writer.writerows(sensor_list)
 
-                sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
-                sensor_full_set.update(sensor_id_list)
+                    sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
+                    sensor_full_set.update(sensor_id_list)
 
     # if len(sensor_full_set) > 0:
     #     sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
@@ -72,21 +74,29 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
     #                     writer.writerow(row)
 
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
-    """Yield location row dicts that satisfy the configured date filter."""
     page = 1
     min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
-    for coord in open_aq_cfg["data"]["coordinates"]:
-        while True:
-            location_response = client.locations.list(
-                coordinates=(
-                    coord[0],
-                    coord[1],
-                ),
-                radius=open_aq_cfg["data"]["radius"],
-                limit=open_aq_cfg["paging"]["limit"],
-                page=page,
-            )
 
+    for coord in open_aq_cfg["data"]["coordinates"]:
+        page = 1
+
+        while True:
+            try:
+                location_response = client.locations.list(
+                    coordinates=(
+                        coord[0],
+                        coord[1],
+                    ),
+                    radius=open_aq_cfg["data"]["radius"],
+                    limit=open_aq_cfg["paging"]["limit"],
+                    page=page,
+                )
+
+                page += 1
+            except Exception as e:
+                print(f"Failed to extract for the following: coord {coord} on page {page}. Full error: {e}")
+                break
+            
             # Exists when there are no longer any results from pagination
             if not location_response.results:
                 break
@@ -103,17 +113,17 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
                     "country_name": l.country.name,
                     "country_code": l.country.code,
                     "timezone": l.timezone,
-                    "first_read_at": l.datetime_first.utc,
-                    "last_read_at": l.datetime_last.utc,
+                    "first_read_at": None if l.datetime_first is None else l.datetime_first.utc,
+                    "last_read_at": None if l.datetime_last is None else l.datetime_last.utc,
                 }
 
                 # Excludes sensors that do not have data within the date params passed
-                last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
-                if last_read >= min_dt:
-                    sensor_list = _extract_sensors_from_location(l)
-                    yield location_data_dict, sensor_list
+                if location_data_dict["last_read_at"] is not None:
+                    last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
 
-            page += 1
+                    if last_read >= min_dt:
+                        sensor_list = _extract_sensors_from_location(l)
+                        yield location_data_dict, sensor_list
 
 
 def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
