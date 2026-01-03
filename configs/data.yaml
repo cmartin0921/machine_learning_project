@@ -1,12 +1,12 @@
 data:
+  # Format must be [[latitiude, longitude], ... ]
   coordinates:
-    latitude: 52.237049
-    longitude: 21.017532
+    [[52.237049, 21.017532]]
   radius: 10000
 
 time:
-  start: 2023-01-01 00:00:00
-  end: 2023-12-31 00:00:00
+  start: 2022-01-01 00:00:00
+  end: 2025-01-31 00:00:00
   rollup: daily # hourly|daily|yearly
 
 paging:

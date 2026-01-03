@@ -44,75 +44,77 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
                 sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
                 sensor_full_set.update(sensor_id_list)
 
-    if len(sensor_full_set) > 0:
-        sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
-        file_exists = os.path.isfile(sensors_file_loc)
+    # if len(sensor_full_set) > 0:
+    #     sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
+    #     file_exists = os.path.isfile(sensors_file_loc)
 
-        with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
-            for s_id in sorted(sensor_full_set):
-                time.sleep(5)  # TODO: rate-limit handling
-                if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
-                    if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
-                        continue
+    #     with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
+    #         for s_id in sorted(sensor_full_set):
+    #             time.sleep(5)  # TODO: rate-limit handling
+    #             if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
+    #                 if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
+    #                     continue
                 
-                to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
+    #             to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
 
-                # Needed in order to get the keys that will be the header of the .csv file
-                first_row = next(to_write, None)
-                if first_row is not None:
-                    col_names = list(first_row.keys())
-                    writer = csv.DictWriter(csvfile, fieldnames=col_names)
+    #             # Needed in order to get the keys that will be the header of the .csv file
+    #             first_row = next(to_write, None)
+    #             if first_row is not None:
+    #                 col_names = list(first_row.keys())
+    #                 writer = csv.DictWriter(csvfile, fieldnames=col_names)
 
-                    if not file_exists:
-                        writer.writeheader()
-                        file_exists = True
+    #                 if not file_exists:
+    #                     writer.writeheader()
+    #                     file_exists = True
 
-                    writer.writerow(first_row)
-                    for row in to_write:
-                        writer.writerow(row)
+    #                 writer.writerow(first_row)
+    #                 for row in to_write:
+    #                     writer.writerow(row)
 
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
     """Yield location row dicts that satisfy the configured date filter."""
     page = 1
-    while True:
-        location_response = client.locations.list(
-            coordinates=(
-                open_aq_cfg["data"]["coordinates"]["latitude"],
-                open_aq_cfg["data"]["coordinates"]["longitude"],
-            ),
-            radius=open_aq_cfg["data"]["radius"],
-            limit=open_aq_cfg["paging"]["limit"],
-            page=page,
-        )
+    for coord in open_aq_cfg["data"]["coordinates"]:
+        while True:
+            location_response = client.locations.list(
+                coordinates=(
+                    coord[0],
+                    coord[1],
+                ),
+                radius=open_aq_cfg["data"]["radius"],
+                limit=open_aq_cfg["paging"]["limit"],
+                page=page,
+            )
 
-        # Exists when there are no longer any results from pagination
-        if not location_response.results:
-            break
+            # Exists when there are no longer any results from pagination
+            if not location_response.results:
+                break
 
-        for l in location_response.results:
-            location_data_dict = {
-                "location_id": l.id,
-                "location_name": l.name,
-                "location_owner_name": l.owner.name,
-                "location_owner_id": l.owner.id,
-                "latitude": l.coordinates.latitude,
-                "longitude": l.coordinates.longitude,
-                "country_id": l.country.id,
-                "country_name": l.country.name,
-                "country_code": l.country.code,
-                "timezone": l.timezone,
-                "first_read_at": l.datetime_first.utc,
-                "last_read_at": l.datetime_last.utc,
-            }
+            for l in location_response.results:
+                location_data_dict = {
+                    "location_id": l.id,
+                    "location_name": l.name,
+                    "location_owner_name": l.owner.name,
+                    "location_owner_id": l.owner.id,
+                    "latitude": l.coordinates.latitude,
+                    "longitude": l.coordinates.longitude,
+                    "country_id": l.country.id,
+                    "country_name": l.country.name,
+                    "country_code": l.country.code,
+                    "timezone": l.timezone,
+                    "first_read_at": l.datetime_first.utc,
+                    "last_read_at": l.datetime_last.utc,
+                }
 
-            # Excludes sensors that do not have data within the date params passed
-            last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
-            min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
-            if last_read >= min_dt:
-                sensor_list = _extract_sensors_from_location(l)
-                yield location_data_dict, sensor_list
+                # Excludes sensors that do not have data within the date params passed
+                last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
+                min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
+                if last_read >= min_dt:
+                    sensor_list = _extract_sensors_from_location(l)
+                    yield location_data_dict, sensor_list
 
-        page += 1
+            page += 1
+
 
 def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
     page = 1
