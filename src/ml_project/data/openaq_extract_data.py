@@ -74,6 +74,7 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
     """Yield location row dicts that satisfy the configured date filter."""
     page = 1
+    min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
     for coord in open_aq_cfg["data"]["coordinates"]:
         while True:
             location_response = client.locations.list(
@@ -108,7 +109,6 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
 
                 # Excludes sensors that do not have data within the date params passed
                 last_read = datetime.fromisoformat(location_data_dict["last_read_at"])
-                min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
                 if last_read >= min_dt:
                     sensor_list = _extract_sensors_from_location(l)
                     yield location_data_dict, sensor_list
