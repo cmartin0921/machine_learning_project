@@ -1,0 +1,59 @@
+sensor_id,measurement,measurement_name,units,location_id
+17894,NO₂ mass,no2,µg/m³,6381
+26098,PM10,pm10,µg/m³,6381
+26099,PM2.5,pm25,µg/m³,6381
+36300,NO₂ mass,no2,µg/m³,6386
+35053,O₃ mass,o3,µg/m³,6386
+35054,PM10,pm10,µg/m³,6386
+35055,PM2.5,pm25,µg/m³,6386
+17901,SO₂ mass,so2,µg/m³,6386
+36163,NO₂ mass,no2,µg/m³,7245
+36297,O₃ mass,o3,µg/m³,7245
+22714,PM10,pm10,µg/m³,7245
+22713,PM2.5,pm25,µg/m³,7245
+20861,SO₂ mass,so2,µg/m³,7245
+35986,NO₂ mass,no2,µg/m³,10775
+35988,O₃ mass,o3,µg/m³,10775
+35990,PM10,pm10,µg/m³,10775
+35993,PM2.5,pm25,µg/m³,10775
+35994,SO₂ mass,so2,µg/m³,10775
+35996,BC,bc,µg/m³,10776
+36156,CO mass,co,µg/m³,10776
+36160,NO₂ mass,no2,µg/m³,10776
+36161,PM10,pm10,µg/m³,10776
+36162,PM2.5,pm25,µg/m³,10776
+386025,O₃ mass,o3,µg/m³,60175
+9414058,PM1,pm1,µg/m³,2872756
+9414065,PM10,pm10,µg/m³,2872756
+9414057,PM2.5,pm25,µg/m³,2872756
+9414052,RH,relativehumidity,%,2872756
+9414053,Temperature (C),temperature,c,2872756
+9414105,PM0.3 count,um003,particles/cm³,2872756
+9445908,PM1,pm1,µg/m³,2876975
+9448500,PM1,pm1,µg/m³,2876975
+9448503,PM10,pm10,µg/m³,2876975
+9445909,PM10,pm10,µg/m³,2876975
+9445910,PM2.5,pm25,µg/m³,2876975
+9448513,PM2.5,pm25,µg/m³,2876975
+9448510,RH,relativehumidity,%,2876975
+9445912,Temperature (C),temperature,c,2876975
+9445913,Temperature (F),temperature,f,2876975
+9448504,Temperature (C),temperature,c,2876975
+9448518,PM0.3 count,um003,particles/cm³,2876975
+11316526,PM1,pm1,µg/m³,3270912
+11316531,PM10,pm10,µg/m³,3270912
+11316524,PM2.5,pm25,µg/m³,3270912
+11316537,RH,relativehumidity,%,3270912
+11316533,Temperature (C),temperature,c,3270912
+11316529,PM0.3 count,um003,particles/cm³,3270912
+14153172,PM1,pm1,µg/m³,5075698
+14153173,PM2.5,pm25,µg/m³,5075698
+14153174,RH,relativehumidity,%,5075698
+14153175,Temperature (C),temperature,c,5075698
+14153176,PM0.3 count,um003,particles/cm³,5075698
+13952345,NO₂ mass,no2,µg/m³,5554541
+13952343,PM10,pm10,µg/m³,5554541
+13952344,PM2.5,pm25,µg/m³,5554541
+13952348,NO₂ mass,no2,µg/m³,5554542
+13952346,PM10,pm10,µg/m³,5554542
+13952347,PM2.5,pm25,µg/m³,5554542

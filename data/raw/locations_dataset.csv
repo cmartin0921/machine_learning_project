@@ -1,0 +1,13 @@
+location_id,location_name,location_owner_name,location_owner_id,latitude,longitude,country_id,country_name,country_code,timezone,first_read_at,last_read_at
+6381,"Warszawa, ul. Tołstoja",Unknown Governmental Organization,4,52.285073000210836,20.933017999762576,77,Poland,PL,Europe/Warsaw,2018-11-21T18:00:00Z,2025-12-27T06:00:00Z
+6386,"Warszawa, ul. Wokalna",Unknown Governmental Organization,4,52.16077200027042,21.033818999839358,77,Poland,PL,Europe/Warsaw,2018-11-21T18:00:00Z,2025-12-27T15:00:00Z
+7245,"Warszawa, ul. Kondratowicza",Unknown Governmental Organization,4,52.29086399994045,21.04245800001037,77,Poland,PL,Europe/Warsaw,2018-11-22T12:00:00Z,2025-12-27T15:00:00Z
+10775,"Warszawa, ul. Chrościckiego",Unknown Governmental Organization,4,52.207742000168864,20.906072999577745,77,Poland,PL,Europe/Warsaw,2019-01-04T09:00:00Z,2025-12-27T15:00:00Z
+10776,"Warszawa, al. Niepodległości",Unknown Governmental Organization,4,52.21929800005291,21.004723999701287,77,Poland,PL,Europe/Warsaw,2018-11-21T18:00:00Z,2025-12-27T15:00:00Z
+60175,"Warszawa, IMGW",Unknown Governmental Organization,4,52.281304000224026,20.96338300032009,77,Poland,PL,Europe/Warsaw,2021-01-07T07:00:00Z,2025-12-27T06:00:00Z
+2872756,Biala,Unknown Person,11509,52.238607,20.990778,77,Poland,PL,Europe/Warsaw,2024-05-29T13:00:00Z,2025-12-27T16:00:00Z
+2876975,Sadul,Unknown Person,11509,52.207899,21.148612,77,Poland,PL,Europe/Warsaw,2024-06-01T01:00:00Z,2025-12-27T16:00:00Z
+3270912,Sowińskiego 25,Unknown Person,11509,52.224002,20.935344,77,Poland,PL,Europe/Warsaw,2024-11-15T19:00:00Z,2025-12-27T16:00:00Z
+5075698,Warsaw (Hala Mirowska),AirGradient,12,52.238825145319,20.998092967667162,77,Poland,PL,Europe/Warsaw,2025-09-19T00:00:00Z,2025-12-27T16:00:00Z
+5554541,"Warszawa, al. Solidarności",Unknown Governmental Organization,4,52.243573,20.999214,77,Poland,PL,Europe/Warsaw,2025-08-25T08:00:00Z,2025-10-10T13:00:00Z
+5554542,"Warszawa, ul. Grochowska",Unknown Governmental Organization,4,52.24570400000001,21.080427,77,Poland,PL,Europe/Warsaw,2025-08-25T08:00:00Z,2025-10-10T13:00:00Z
