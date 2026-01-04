@@ -1,9 +1,12 @@
 import os
 import csv
 import time
+import re
 
 from typing import Dict, Iterable, List, Tuple
 from datetime import datetime, timezone
+
+from openaq.shared.exceptions import ServerError, RateLimitError
 
 def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
@@ -45,33 +48,39 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
                     sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
                     sensor_full_set.update(sensor_id_list)
+    else:
+        with open(
+            sensors_meta_file_loc, "r", encoding="utf-8", newline=""
+        ) as sensor_f:
+            sensor_csv_data = csv.DictReader(sensor_f)
+            for r in sensor_csv_data:
+                sensor_full_set.add(int(r["sensor_id"]))
 
-    # if len(sensor_full_set) > 0:
-    #     sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
-    #     file_exists = os.path.isfile(sensors_file_loc)
+    if len(sensor_full_set) > 0:
+        sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
+        file_exists = os.path.isfile(sensors_file_loc)
 
-    #     with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
-    #         for s_id in sorted(sensor_full_set):
-    #             time.sleep(5)  # TODO: rate-limit handling
-    #             if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
-    #                 if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
-    #                     continue
+        with open(sensors_file_loc, "w", encoding="utf-8", newline="") as csvfile:
+            for s_id in sorted(sensor_full_set):
+                if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
+                    if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
+                        continue
                 
-    #             to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
+                to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
 
-    #             # Needed in order to get the keys that will be the header of the .csv file
-    #             first_row = next(to_write, None)
-    #             if first_row is not None:
-    #                 col_names = list(first_row.keys())
-    #                 writer = csv.DictWriter(csvfile, fieldnames=col_names)
+                # Needed in order to get the keys that will be the header of the .csv file
+                first_row = next(to_write, None)
+                if first_row is not None:
+                    col_names = list(first_row.keys())
+                    writer = csv.DictWriter(csvfile, fieldnames=col_names)
 
-    #                 if not file_exists:
-    #                     writer.writeheader()
-    #                     file_exists = True
+                    if not file_exists:
+                        writer.writeheader()
+                        file_exists = True
 
-    #                 writer.writerow(first_row)
-    #                 for row in to_write:
-    #                     writer.writerow(row)
+                    writer.writerow(first_row)
+                    for row in to_write:
+                        writer.writerow(row)
 
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
     page = 1
@@ -91,11 +100,18 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
                     limit=open_aq_cfg["paging"]["limit"],
                     page=page,
                 )
-
-                page += 1
-            except Exception as e:
-                print(f"Failed to extract for the following: coord {coord} on page {page}. Full error: {e}")
+            except ServerError as server_err:
+                print(f"Failed to extract for the following: coord {coord} on page {page}. Full error: {server_err}")
                 break
+            except RateLimitError as rate_error:
+                print(f"Rate Limit Error: {rate_error}")
+                rate_sleep = 70
+                match = re.search(r"(\d+)\s*seconds?", str(rate_error))
+                if match:
+                    rate_sleep = int(match.group(1))
+                time.sleep(rate_sleep + 5)
+                continue
+
             
             # Exists when there are no longer any results from pagination
             if not location_response.results:
@@ -124,20 +140,35 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
                     if last_read >= min_dt:
                         sensor_list = _extract_sensors_from_location(l)
                         yield location_data_dict, sensor_list
+            
+            page += 1
 
 
 def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
     page = 1
     while True:
-        time.sleep(1.5) # TODO: rate-limit handling
-        sensor_data_response = client.measurements.list(
-            sensors_id=sensor_id,
-            datetime_from=open_aq_cfg["time"]["start"],
-            datetime_to=open_aq_cfg["time"]["end"],
-            limit=open_aq_cfg["paging"]["limit"],
-            rollup=open_aq_cfg["time"]["rollup"],
-            page=page
-        )
+        print(f"Fetching data for sensor ID {sensor_id} between {open_aq_cfg["time"]["start"]} and {open_aq_cfg["time"]["end"]} at {open_aq_cfg["time"]["rollup"]} granularity on page {page}")
+        
+        try:
+            sensor_data_response = client.measurements.list(
+                sensors_id=sensor_id,
+                datetime_from=open_aq_cfg["time"]["start"],
+                datetime_to=open_aq_cfg["time"]["end"],
+                limit=open_aq_cfg["paging"]["limit"],
+                rollup=open_aq_cfg["time"]["rollup"],
+                page=page
+            )
+        except ServerError as int_err:
+            print(f"Server Error: {int_err}")
+            break
+        except RateLimitError as rate_error:
+            print(f"Rate Limit Error: {rate_error}")
+            rate_sleep = 70
+            match = re.search(r"(\d+)\s*seconds?", str(rate_error))
+            if match:
+                rate_sleep = int(match.group(1))
+            time.sleep(rate_sleep + 5)
+            continue
         
         print(f"Sensor ID: {sensor_id} at page {page} with results length of {len(sensor_data_response.results)}")
 
