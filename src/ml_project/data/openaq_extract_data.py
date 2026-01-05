@@ -60,7 +60,7 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
         sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
         file_exists = os.path.isfile(sensors_file_loc)
 
-        with open(sensors_file_loc, "w", encoding="utf-8", newline="") as csvfile:
+        with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
             for s_id in sorted(sensor_full_set):
                 if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
                     if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
@@ -148,7 +148,7 @@ def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iter
     page = 1
     while True:
         print(f"Fetching data for sensor ID {sensor_id} between {open_aq_cfg["time"]["start"]} and {open_aq_cfg["time"]["end"]} at {open_aq_cfg["time"]["rollup"]} granularity on page {page}")
-        
+        time.sleep(2)
         try:
             sensor_data_response = client.measurements.list(
                 sensors_id=sensor_id,
