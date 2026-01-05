@@ -13,22 +13,27 @@ class MeteoStatClient():
 
     def extract_daily_data(self, cfg):
         url = f"{self.base_url}/point/daily"
-        query_params = {
-            "lat": cfg["data"]["coordinates"]["latitude"],
-            "lon": cfg["data"]["coordinates"]["longitude"],
-            "start": cfg["time"]["start"].strftime("%Y-%m-%d"),
-            "end": cfg["time"]["end"].strftime("%Y-%m-%d"),
-            "units": cfg["sources"]["meteostat"]["units"],
-            "model": cfg["sources"]["meteostat"]["model"]
-        }
+        for coord in cfg["data"]["coordinates"]:
+            query_params = {
+                "lat": coord[0],
+                "lon": coord[1],
+                "start": cfg["time"]["start"].strftime("%Y-%m-%d"),
+                "end": cfg["time"]["end"].strftime("%Y-%m-%d"),
+                "units": cfg["sources"]["meteostat"]["units"],
+                "model": cfg["sources"]["meteostat"]["model"]
+            }
 
-        try:
-            response = requests.get(url, headers=self.headers, params=query_params, timeout=self.timeout)
-            response.raise_for_status()
-            payload = response.json()
-        except Exception as e:
-            raise e
+            try:
+                response = requests.get(url, headers=self.headers, params=query_params, timeout=self.timeout)
+                response.raise_for_status()
+                weather_daily_data = response.json()["data"]
+            except Exception as e:
+                raise e
+            
+            for record in weather_daily_data:
+                record["latitude"] = coord[0]
+                record["longitude"] = coord[1]
 
-        yield from payload["data"]
+            yield from weather_daily_data
 
 
