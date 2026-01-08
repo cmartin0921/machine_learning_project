@@ -7,6 +7,7 @@ from typing import Dict, Iterable, List, Tuple
 from datetime import datetime, timezone
 
 from openaq.shared.exceptions import ServerError, RateLimitError
+from httpx import ReadTimeout
 
 def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
@@ -23,9 +24,9 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
     # Only go through OpenAQ if files do not exist internally
     if not (locations_file_exists and sensors_file_exists):
         with open(
-            locations_file_loc, "w", encoding="utf-8", newline=""
+            locations_file_loc, "a", encoding="utf-8", newline=""
         ) as location_f, open(
-            sensors_meta_file_loc, "w", encoding="utf-8", newline=""
+            sensors_meta_file_loc, "a", encoding="utf-8", newline=""
         ) as sensor_f:
             for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
                 if location_data is not None:
@@ -103,15 +104,18 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
             except ServerError as server_err:
                 print(f"Failed to extract for the following: coord {coord} on page {page}. Full error: {server_err}")
                 break
-            except RateLimitError as rate_error:
-                print(f"Rate Limit Error: {rate_error}")
+            except RateLimitError as rate_err:
+                print(f"Rate Limit Error: {rate_err}")
                 rate_sleep = 70
-                match = re.search(r"(\d+)\s*seconds?", str(rate_error))
+                match = re.search(r"(\d+)\s*seconds?", str(rate_err))
                 if match:
                     rate_sleep = int(match.group(1))
                 time.sleep(rate_sleep + 5)
                 continue
-
+            except ReadTimeout as timeout_err:
+                print(f"Read Timeout Error: {timeout_err}")
+                time.sleep(10)
+                continue
             
             # Exists when there are no longer any results from pagination
             if not location_response.results:
@@ -125,6 +129,9 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
                     "location_owner_id": l.owner.id,
                     "latitude": l.coordinates.latitude,
                     "longitude": l.coordinates.longitude,
+                    "city_name": l.locality,
+                    "city_latitude": coord[0],
+                    "city_longitude": coord[1],
                     "country_id": l.country.id,
                     "country_name": l.country.name,
                     "country_code": l.country.code,
@@ -168,6 +175,14 @@ def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iter
             if match:
                 rate_sleep = int(match.group(1))
             time.sleep(rate_sleep + 5)
+            continue
+        except ReadTimeout as timeout_err:
+            print(f"Read Timeout Error: {timeout_err}")
+            time.sleep(10)
+            continue
+        except Exception as err:
+            print(f"Unknown Error: {err}")
+            time.sleep(10)
             continue
         
         print(f"Sensor ID: {sensor_id} at page {page} with results length of {len(sensor_data_response.results)}")
