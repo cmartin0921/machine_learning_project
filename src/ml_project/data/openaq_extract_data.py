@@ -8,8 +8,13 @@ from datetime import datetime, timezone
 
 from openaq.shared.exceptions import ServerError, RateLimitError
 from httpx import ReadTimeout
+from ml_project.utils import write_csv
 
-def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
+def openaq_extract_data(
+    client,
+    open_aq_cfg,
+    directory_paths_dict
+):
 
     sensor_full_set = set()
     # Step 1: Extract locations and sensors (within said locations) metadata.
@@ -29,27 +34,20 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
             sensors_meta_file_loc, "a", encoding="utf-8", newline=""
         ) as sensor_f:
             for location_data, sensor_list in _iter_locations(client, open_aq_cfg):
-                if location_data is not None:
-                    location_col_names = list(location_data.keys())
-                    locations_writer = csv.DictWriter(location_f, fieldnames=location_col_names)
-                    if not locations_file_exists:
-                        locations_writer.writeheader()
-                        locations_file_exists = True
+                if write_csv(location_f, location_data):
+                    print(f"Successfully wrote data to {locations_file_loc}.")
+                else:
+                    print(f"No data passed to write to {locations_file_loc}.")
 
-                    locations_writer.writerow(location_data)
+                if write_csv(sensor_f, sensor_list):
+                    print(f"Successfully wrote data to {sensors_meta_file_loc}.")
+                else:
+                    print(f"No data passed to write to {sensors_meta_file_loc}.")
 
-                if sensor_list is not None:
-                    sensor_col_names = list(sensor_list[0].keys())
-                    sensors_writer = csv.DictWriter(sensor_f, fieldnames=sensor_col_names)
-                    if not sensors_file_exists:
-                        sensors_writer.writeheader()
-                        sensors_file_exists = True
-
-                    sensors_writer.writerows(sensor_list)
-
-                    sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
-                    sensor_full_set.update(sensor_id_list)
+                sensor_id_list = [s["sensor_id"] for s in sensor_list if s["sensor_id"] not in open_aq_cfg["sources"]["openaq"]["state"]["sensors_to_skip"]]
+                sensor_full_set.update(sensor_id_list)
     else:
+        # Read sensors from existing data
         with open(
             sensors_meta_file_loc, "r", encoding="utf-8", newline=""
         ) as sensor_f:
@@ -59,29 +57,22 @@ def openaq_extract_data(client, open_aq_cfg, directory_paths_dict):
 
     if len(sensor_full_set) > 0:
         sensors_file_loc = directory_paths_dict["root"] / open_aq_cfg["outputs"]["dir"] / open_aq_cfg["outputs"]["files"]["openaq"]["sensors_measurements"]
-        file_exists = os.path.isfile(sensors_file_loc)
 
-        with open(sensors_file_loc, "a", encoding="utf-8", newline="") as csvfile:
+        with open(sensors_file_loc, "a", encoding="utf-8", newline="") as sensor_measurement_f:
             for s_id in sorted(sensor_full_set):
                 if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] is not None:
                     if open_aq_cfg["sources"]["openaq"]["state"]["last_added_sensor_id"] > s_id:
                         continue
+
+                rows_written = 0
+                for measurement in _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id):
+                    if write_csv(sensor_measurement_f, measurement):
+                        rows_written += 1
                 
-                to_write = _iter_sensor_measurements(client, open_aq_cfg, sensor_id=s_id)
-
-                # Needed in order to get the keys that will be the header of the .csv file
-                first_row = next(to_write, None)
-                if first_row is not None:
-                    col_names = list(first_row.keys())
-                    writer = csv.DictWriter(csvfile, fieldnames=col_names)
-
-                    if not file_exists:
-                        writer.writeheader()
-                        file_exists = True
-
-                    writer.writerow(first_row)
-                    for row in to_write:
-                        writer.writerow(row)
+                if rows_written > 0:
+                    print(f"Successfully wrote {rows_written} rows to {sensors_file_loc} for {s_id}.")
+                else:
+                    print(f"No data passed to write to {sensors_file_loc} for {s_id}.")
 
 def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict]]]:
     page = 1
@@ -151,11 +142,16 @@ def _iter_locations(client, open_aq_cfg: Dict) -> Iterable[Tuple[dict, List[dict
             page += 1
 
 
-def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iterable[dict]:
+def _iter_sensor_measurements(
+        client,
+        open_aq_cfg: Dict,
+        sensor_id: int
+) -> Iterable[dict]:
+    
     page = 1
     while True:
         print(f"Fetching data for sensor ID {sensor_id} between {open_aq_cfg["time"]["start"]} and {open_aq_cfg["time"]["end"]} at {open_aq_cfg["time"]["rollup"]} granularity on page {page}")
-        time.sleep(2)
+        time.sleep(0.5)
         try:
             sensor_data_response = client.measurements.list(
                 sensors_id=sensor_id,
@@ -206,7 +202,10 @@ def _iter_sensor_measurements(client, open_aq_cfg: Dict, sensor_id: int) -> Iter
 
         page += 1
 
-def _extract_sensors_from_location(location_result) -> List[dict]:
+def _extract_sensors_from_location(
+        location_result
+) -> List[dict]:
+    
     """Extract sensors metadata rows from a single location result object."""
     sensor_location_list = []
     for s in location_result.sensors:
