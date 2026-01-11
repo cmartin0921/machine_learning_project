@@ -150,7 +150,12 @@ def _iter_locations(
                 else:
                     logger.debug("Skipping location ID %d - no last_read_at timestamp", l.id)
             
-            page += 1
+            # Prevents from potentially pagination to a page with 0 results
+            # if it is known the current page did not hit the limit
+            if len(location_response.results) == open_aq_cfg["paging"]["limit"]:
+                page += 1
+            else:
+                break
 
 
 def _iter_sensor_measurements(
@@ -211,7 +216,12 @@ def _iter_sensor_measurements(
 
             yield sensor_measurement
 
-        page += 1
+        # Prevents from potentially pagination to a page with 0 results
+        # if it is known the current page did not hit the limit
+        if len(sensor_data_response.results) == open_aq_cfg["paging"]["limit"]:
+            page += 1
+        else:
+            break
 
 def _extract_sensors_from_location(
     location_result
