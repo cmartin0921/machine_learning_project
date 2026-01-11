@@ -1,4 +1,7 @@
 import requests
+import logging
+
+logger = logging.getLogger("ml_project")
 
 class MeteoStatClient():
 
@@ -24,10 +27,12 @@ class MeteoStatClient():
             }
 
             try:
+                logger.info("Requesting daily data from MeteoStat.")
                 response = requests.get(url, headers=self.headers, params=query_params, timeout=self.timeout)
                 response.raise_for_status()
                 weather_daily_data = response.json()["data"]
             except Exception as e:
+                logger.error("Error when requesting MeteoStat daily data: %s", e)
                 raise e
             
             for record in weather_daily_data:
