@@ -1,167 +1,123 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Dict
+
 import pandas as pd
-import numpy as np
+
+from .load_raw_data import load_raw_data
+
+
+WEATHER_NUMERIC_COLUMNS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
+
+
+def _drop_header_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove accidental header rows that appear as data (seen in raw CSVs).
+    """
+    header = [str(col) for col in df.columns]
+    mask = ~df.astype(str).eq(header).all(axis=1)
+    return df.loc[mask].copy()
+
+
+def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
+    df = _drop_header_rows(df).drop_duplicates()
+    df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    df["datetime_from"] = pd.to_datetime(df["datetime_from"], errors="coerce", utc=True)
+    df["datetime_to"] = pd.to_datetime(df["datetime_to"], errors="coerce", utc=True)
+    df["timestamp_rollup"] = df["timestamp_rollup"].astype(str).str.lower().str.strip()
+    df["metric_name"] = df["metric_name"].astype(str).str.lower().str.strip()
+    df = df.dropna(subset=["sensor_id", "datetime_from", "value"])
+
+    # Remove obviously bad readings (negative particulate concentration).
+    df = df[df["value"] >= 0]
+
+    df["sensor_id"] = df["sensor_id"].astype(int)
+    df["reading_date"] = df["datetime_from"].dt.floor("D").dt.tz_localize(None)
+    df = df.rename(columns={"units": "reading_units"})
+    return df.reset_index(drop=True)
+
+
+def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
+    df = _drop_header_rows(df).drop_duplicates()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
+    for col in WEATHER_NUMERIC_COLUMNS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["date"])
+    return df.reset_index(drop=True)
+
+
+def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
+    df = _drop_header_rows(df).drop_duplicates()
+    df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
+    df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+    df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+    df["country_id"] = pd.to_numeric(df["country_id"], errors="coerce").astype("Int64")
+    df["first_read_at"] = pd.to_datetime(df["first_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
+    df["last_read_at"] = pd.to_datetime(df["last_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
+    df = df.dropna(subset=["location_id"])
+    df["location_id"] = df["location_id"].astype(int)
+    df["country_id"] = df["country_id"].astype(int)
+    return df.reset_index(drop=True)
+
+
+def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    df = _drop_header_rows(df).drop_duplicates()
+    df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
+    df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
+    df["measurement_name"] = df["measurement_name"].astype(str).str.lower().str.strip()
+    df["measurement"] = df["measurement"].astype(str).str.lower().str.strip()
+    df = df.dropna(subset=["sensor_id", "location_id"])
+    df["sensor_id"] = df["sensor_id"].astype(int)
+    df["location_id"] = df["location_id"].astype(int)
+    df = df.rename(columns={"units": "sensor_units"})
+    return df.reset_index(drop=True)
+
+
+def _merge_datasets(measurements: pd.DataFrame, metadata: pd.DataFrame, locations: pd.DataFrame, weather: pd.DataFrame) -> pd.DataFrame:
+    combined = measurements.merge(metadata, on="sensor_id", how="left", suffixes=("", "_meta"))
+    combined = combined.merge(locations, on="location_id", how="left", suffixes=("", "_location"))
+    combined = combined.merge(weather, left_on="reading_date", right_on="date", how="left")
+    combined = combined.drop(columns=["date"], errors="ignore")
+    combined = combined.rename(columns={"metric_name": "metric", "timestamp_rollup": "rollup"})
+    combined = combined.sort_values(["reading_date", "sensor_id"]).reset_index(drop=True)
+    return combined
+
 
 def clean_data(
-    sensors_df: pd.DataFrame,
-    weather_df: pd.DataFrame,
-    sensors_meta_df: pd.DataFrame,
-    locations_df: pd.DataFrame,
-    cities_df: pd.DataFrame
+    raw_dir: str | Path | None = None,
+    output_path: str | Path | None = None,
 ) -> pd.DataFrame:
     """
-    Clean and merge sensor, weather, location, and city data into a single daily pivot table.
-    
+    Load, clean, and merge raw CSV datasets into a single DataFrame.
+
     Parameters
     ----------
-    sensors_df : pd.DataFrame
-        Raw sensor measurements data
-    weather_df : pd.DataFrame
-        Raw weather data
-    sensors_meta_df : pd.DataFrame
-        Sensor metadata
-    locations_df : pd.DataFrame
-        Location data with coordinates
-    cities_df : pd.DataFrame
-        City information
-    
+    raw_dir:
+        Directory containing the raw CSV files. Defaults to `<project_root>/data/raw`.
+    output_path:
+        Optional path to persist the cleaned, merged dataset (CSV). If omitted,
+        the dataset is returned but not saved.
+
     Returns
     -------
-    pd.DataFrame
-        Cleaned and merged daily pivot table with sensor metrics and weather data
+    pandas.DataFrame
+        Cleaned and merged dataset containing measurements, sensor metadata,
+        location context, and weather observations.
     """
-    
-    # Step 1: Merge all sensor-related data
-    join_key = "sensor_id"
-    overlapping_cols = [
-        col for col in sensors_meta_df.columns 
-        if col in sensors_df.columns and col != join_key
-    ]
-    
-    sensors_all_data = (
-        sensors_df
-        .merge(
-            sensors_meta_df.drop(columns=overlapping_cols),
-            how="left",
-            on=join_key
-        )
-        .merge(
-            locations_df[["location_id", "latitude", "longitude", "city_latitude", "city_longitude"]],
-            how="left",
-            on="location_id"
-        )
-        .merge(
-            cities_df,
-            how="left",
-            left_on=["city_latitude", "city_longitude"],
-            right_on=["latitude", "longitude"],
-        )
-    )
-    
-    # Clean up duplicate columns from merges
-    cols_to_drop = ["measurement_name", "latitude_y", "longitude_y"]
-    cols_to_drop = [c for c in cols_to_drop if c in sensors_all_data.columns]
-    sensors_all_data.drop(columns=cols_to_drop, inplace=True)
-    
-    if "latitude_x" in sensors_all_data.columns:
-        sensors_all_data.rename(
-            columns={"latitude_x": "latitude", "longitude_x": "longitude"},
-            inplace=True
-        )
-    
-    # Step 2: Normalize datetime to date level
-    sensors_all_data["datetime"] = (
-        pd.to_datetime(sensors_all_data["datetime_to"], errors="coerce", utc=True)
-        .dt.tz_convert(None)
-        .dt.normalize()
-    )
-    
-    # Step 3: Get sensor count per day/city
-    sensor_counts = (
-        sensors_all_data
-        .groupby(["datetime", "city_name", "city_latitude", "city_longitude"])["sensor_id"]
-        .nunique()
-        .reset_index(name="sensor_count")
-    )
-    
-    # Step 4: Daily mean per metric
-    daily_metrics = (
-        sensors_all_data
-        .groupby(["datetime", "city_name", "city_latitude", "city_longitude", "metric_name"])["value"]
-        .mean()
-        .reset_index()
-    )
-    
-    # Step 5: Pivot metrics to columns
-    sensors_daily_pivot = daily_metrics.pivot(
-        index=["datetime", "city_name", "city_latitude", "city_longitude"],
-        columns="metric_name",
-        values="value"
-    ).reset_index()
-    
-    # Merge sensor count
-    sensors_daily_pivot = sensors_daily_pivot.merge(
-        sensor_counts,
-        on=["datetime", "city_name", "city_latitude", "city_longitude"],
-        how="left"
-    )
-    sensors_daily_pivot.columns.name = None
-    
-    # Step 6: Fill missing dates in the date range
-    sensors_daily_pivot["datetime"] = pd.to_datetime(sensors_daily_pivot["datetime"])
-    min_date = sensors_daily_pivot["datetime"].min()
-    max_date = sensors_daily_pivot["datetime"].max()
-    full_date_range = pd.date_range(start=min_date, end=max_date, freq="D")
-    
-    # Get unique city combinations
-    cities = sensors_daily_pivot[["city_name", "city_latitude", "city_longitude"]].drop_duplicates()
-    
-    # Create a full grid of dates × cities
-    full_index = pd.MultiIndex.from_product(
-        [full_date_range, cities["city_name"].unique()],
-        names=["datetime", "city_name"]
-    )
-    full_df = pd.DataFrame(index=full_index).reset_index()
-    
-    # Add city lat/lon back
-    full_df = full_df.merge(cities, on="city_name", how="left")
-    
-    # Merge with existing data (missing dates will have NaN for metrics)
-    sensors_daily_pivot = full_df.merge(
-        sensors_daily_pivot,
-        on=["datetime", "city_name", "city_latitude", "city_longitude"],
-        how="left"
-    )
-    
-    # Fill sensor_count with 0 for missing dates
-    sensors_daily_pivot["sensor_count"] = sensors_daily_pivot["sensor_count"].fillna(0).astype(int)
-    
-    # Sort by city and date
-    sensors_daily_pivot = sensors_daily_pivot.sort_values(
-        ["city_name", "datetime"]
-    ).reset_index(drop=True)
-    
-    # Step 7: Merge weather data
-    weather_df["date"] = (
-        pd.to_datetime(weather_df["date"])
-        .dt.tz_localize(None)
-        .dt.normalize()
-    )
-    sensors_daily_pivot["datetime"] = (
-        pd.to_datetime(sensors_daily_pivot["datetime"])
-        .dt.tz_localize(None)
-    )
-    
-    sensors_daily_pivot = sensors_daily_pivot.merge(
-        weather_df,
-        how="left",
-        left_on=["datetime", "city_latitude", "city_longitude"],
-        right_on=["date", "latitude", "longitude"]
-    )
-    
-    # Drop duplicate columns from the weather merge
-    sensors_daily_pivot = sensors_daily_pivot.drop(
-        columns=["date", "latitude", "longitude"], 
-        errors="ignore"
-    )
-    
-    return sensors_daily_pivot
+    raw_data: Dict[str, pd.DataFrame] = load_raw_data(raw_dir)
+    measurements = _clean_measurements(raw_data["measurements"])
+    weather = _clean_weather(raw_data["weather"])
+    locations = _clean_locations(raw_data["locations"])
+    metadata = _clean_sensor_metadata(raw_data["sensors_metadata"])
+
+    combined = _merge_datasets(measurements, metadata, locations, weather)
+
+    if output_path:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_csv(output_path, index=False)
+
+    return combined
