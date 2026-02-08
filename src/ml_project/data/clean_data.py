@@ -32,6 +32,9 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
     for col in WEATHER_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+        
+        if col in ("prcp", "snow"):
+            df[col] = df[col].fillna(0)
     df = df.dropna(subset=["date"])
     
     return df.reset_index(drop=True)
