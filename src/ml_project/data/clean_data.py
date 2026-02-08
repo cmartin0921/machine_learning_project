@@ -40,6 +40,7 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
 
 def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
+
     for col in WEATHER_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -47,6 +48,12 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
         if col in ("prcp", "snow"):
             df[col] = df[col].fillna(0)
     df = df.dropna(subset=["date"])
+
+    # Removing columns without any data
+    cols_with_null = df.isna().sum()
+    row_count = df.shape[0]
+    cols_without_data = cols_with_null[cols_with_null == row_count]
+    df = df.drop(columns=cols_without_data.index, errors="ignore")
     
     return df.reset_index(drop=True)
 
@@ -93,14 +100,40 @@ def _merge_datasets(
     
     return combined
 
-# def _data_transformation(
+def _data_transform(
+    measurements: pd.DataFrame,
+    weather: pd.DataFrame
+) -> pd.DataFrame:
+
+    pivoted_measurements = (
+        measurements
+        .pivot_table(
+            index="reading_date",
+            columns="metric_name",
+            values="value",
+            aggfunc="mean"
+        )
+    )
+    # Count sensors with non-null values per day
+    pivoted_measurements["sensor_count"] = (
+        measurements
+        .dropna(subset=["value"])
+        .groupby("reading_date")["sensor_id"]
+        .nunique()
+    )
+    pivoted_measurements = pivoted_measurements.reset_index()
+
+    combined = (
+        pivoted_measurements
+            .merge(weather, left_on="reading_date", right_on="date", how="left")
+    )
     
-# )
+    return combined
 
 
 def clean_data(
     df_dicts
-) -> pd.DataFrame:
+) -> dict:
     """
     Load, clean, and merge raw CSV datasets into a single DataFrame.
 
@@ -121,8 +154,12 @@ def clean_data(
     measurements = _clean_measurements(df_dicts["sensors_measurements"])
     weather = _clean_weather(df_dicts["weather"])
 
-    # asdf = _data_transformation(measurements, metadata)
+    combined = _data_transform(measurements, weather)
 
-    # combined = _merge_datasets(measurements, metadata, locations, weather)
-
-    return locations, metadata, measurements, weather
+    return {
+        "locations": locations,
+        "sensors_metadata": metadata,
+        "sensors_measurements": measurements,
+        "weather": weather,
+        "cleaned": combined
+    }
