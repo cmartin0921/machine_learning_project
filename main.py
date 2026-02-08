@@ -40,13 +40,20 @@ def main():
     meteostat_extract_data(meteo_client, cfg, directory_paths_dict)
 
     # Loading the data
-    locations_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["locations"])
-    sensors_metadata_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["sensors_metadata"])
-    sensors_measurements_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"])
-    weather_daily_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
+    locations_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["locations"])
+    sensors_metadata_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_metadata"])
+    sensors_measurements_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"])
+    weather_daily_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
+
+    dataframes_dict = {
+        "locations": locations_df_raw,
+        "sensors_metadata": sensors_metadata_df_raw,
+        "sensors_measurements": sensors_measurements_df_raw,
+        "weather": weather_daily_df_raw
+    }
 
     # # Cleaning the data
-    # sensors_df, weather_df = clean_data(sensors_df_raw, weather_df_raw)
+    cleaned_dataframes_dict = clean_data(dataframes_dict)
 
 if __name__ == "__main__":
     main()

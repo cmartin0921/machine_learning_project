@@ -1,11 +1,7 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Dict
 
 import pandas as pd
-
-from .load_raw_data import load_raw_data
 
 
 WEATHER_NUMERIC_COLUMNS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
