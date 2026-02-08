@@ -1,6 +1,3 @@
-from pathlib import Path
-from typing import Dict
-
 import pandas as pd
 
 WEATHER_COLS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
