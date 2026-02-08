@@ -8,9 +8,8 @@ from ml_project.utils import get_project_directories, setup_logger
 from ml_project.data import openaq_extract_data, meteostat_extract_data
 from ml_project.cleaning import clean_data
 from ml_project.feature_engineering import (
-    generate_features, impute_missing_data,
-    one_hot_encoding, remove_outliers,
-    scaling
+    generate_features, handle_outliers, detect_outliers, impute_missing_data,
+    one_hot_encoding, scaling
 )
 from ml_project.data.MeteoStatClient import MeteoStatClient
 
@@ -52,6 +51,14 @@ def main():
     cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
 
+    # Detect outliers first (for inspection/logging)
+    outliers = detect_outliers(cleaned_df)
+    logger.info("Columns with outliers: %s", list(outliers.keys()))
+    for col, outlier_list in outliers.items():
+        logger.info("  %s: %d outliers", col, len(outlier_list))
+
+    # Handle outliers by capping values at IQR fences
+    cleaned_df = handle_outliers(cleaned_df, method="cap")
     cleaned_df = impute_missing_data(cleaned_df)
 
 
