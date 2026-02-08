@@ -52,7 +52,7 @@ def main():
     cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
 
-
+    cleaned_df = impute_missing_data(cleaned_df)
 
 
 if __name__ == "__main__":

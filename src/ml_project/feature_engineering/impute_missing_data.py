@@ -1,85 +1,64 @@
-from __future__ import annotations
-
-from typing import Dict, Iterable, List, Sequence, Tuple
-
 import pandas as pd
-from sklearn.impute import KNNImputer, SimpleImputer
-
-
-def _infer_column_types(
-    df: pd.DataFrame,
-    numeric_columns: Sequence[str] | None,
-    categorical_columns: Sequence[str] | None,
-) -> Tuple[List[str], List[str]]:
-    inferred_numeric = list(df.select_dtypes(include=["number"]).columns) if numeric_columns is None else list(numeric_columns)
-    inferred_categorical = (
-        list(df.select_dtypes(exclude=["number", "datetime64[ns]", "datetime64[ns, UTC]"]).columns)
-        if categorical_columns is None
-        else list(categorical_columns)
-    )
-    return inferred_numeric, inferred_categorical
-
 
 def impute_missing_data(
     df: pd.DataFrame,
     *,
-    strategy: str = "mean",
-    n_neighbors: int = 5,
-    numeric_columns: Sequence[str] | None = None,
-    categorical_columns: Sequence[str] | None = None,
-    return_imputers: bool = False,
-) -> pd.DataFrame | Tuple[pd.DataFrame, Dict[str, object]]:
+    date_column: str = "reading_date",
+    window_size: int = 7,
+) -> pd.DataFrame:
     """
-    Impute missing values using mean or KNN for numeric features and most frequent
-    value for categorical features.
+    Impute missing values using a 7-day rolling average for numeric features.
 
     Parameters
     ----------
     df:
         Input dataframe to impute.
-    strategy:
-        ``\"mean\"`` for :class:`sklearn.impute.SimpleImputer` or ``\"knn\"`` for
-        :class:`sklearn.impute.KNNImputer`.
-    n_neighbors:
-        Number of neighbors when using KNN imputation.
-    numeric_columns:
-        Optional list of numeric columns to impute. Defaults to all numeric cols.
-    categorical_columns:
-        Optional list of categorical columns to impute. Defaults to non-numeric,
-        non-datetime columns.
-    return_imputers:
-        If True, also return the fitted imputer instances for reuse.
+    date_column:
+        Name of the date column to sort by for rolling average calculation.
+        Defaults to "reading_date".
+    window_size:
+        Size of the rolling window in days for calculating the rolling average.
+        Defaults to 7.
 
     Returns
     -------
-    pandas.DataFrame or (DataFrame, dict)
-        Imputed dataframe, and optionally the fitted imputers keyed by type.
+    pandas.DataFrame
+        Imputed dataframe with missing numeric values filled using rolling average.
     """
-    num_cols, cat_cols = _infer_column_types(df, numeric_columns, categorical_columns)
     result = df.copy()
-    imputers: Dict[str, object] = {}
 
-    if num_cols:
-        if strategy.lower() == "mean":
-            num_imputer = SimpleImputer(strategy="mean")
-        elif strategy.lower() == "knn":
-            num_imputer = KNNImputer(n_neighbors=n_neighbors, keep_empty_features=True)
-        else:
-            raise ValueError("strategy must be either 'mean' or 'knn'")
-        result[num_cols] = num_imputer.fit_transform(result[num_cols])
-        for col in num_cols:
-            if result[col].isna().any():
-                filler = result[col].mean()
-                if pd.isna(filler):
-                    filler = 0.0
-                result[col] = result[col].fillna(filler)
-        imputers["numeric"] = num_imputer
+    # Sort by date column for proper rolling average calculation
+    if date_column in result.columns:
+        result = result.sort_values(date_column).reset_index(drop=True)
+        # Create helper columns for fallback imputation
+        result["_month_year"] = result[date_column].dt.to_period("M")
+        result["_month"] = result[date_column].dt.month
 
-    if cat_cols:
-        cat_imputer = SimpleImputer(strategy="most_frequent")
-        result[cat_cols] = cat_imputer.fit_transform(result[cat_cols])
-        imputers["categorical"] = cat_imputer
+    # Get numeric columns, excluding the date column
+    numeric_cols = result.select_dtypes(include=["number"]).columns.tolist()
 
-    if return_imputers:
-        return result, imputers
+    for col in numeric_cols:
+        if result[col].isna().any():
+            # Calculate rolling average with min_periods=1 to handle edge cases
+            rolling_avg = result[col].rolling(
+                window=window_size, min_periods=1, center=True
+            ).mean()
+
+            # Fill NaN values with the rolling average
+            result[col] = result[col].fillna(rolling_avg)
+
+            # For any remaining NaN values (e.g., if entire window is NaN),
+            # fall back to month-year mean
+            if result[col].isna().any() and "_month_year" in result.columns:
+                month_year_means = result.groupby("_month_year")[col].transform("mean")
+                result[col] = result[col].fillna(month_year_means)
+
+            # For any remaining NaN values, fall back to same month across all years
+            if result[col].isna().any() and "_month" in result.columns:
+                month_means = result.groupby("_month")[col].transform("mean")
+                result[col] = result[col].fillna(month_means)
+                
+    # Remove helper columns
+    result = result.drop(columns=["_month_year", "_month"], errors="ignore")
+
     return result
