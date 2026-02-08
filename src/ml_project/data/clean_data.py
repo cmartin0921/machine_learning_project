@@ -3,42 +3,31 @@ from typing import Dict
 
 import pandas as pd
 
-
-WEATHER_NUMERIC_COLUMNS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
-
-
-def _drop_header_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Remove accidental header rows that appear as data (seen in raw CSVs).
-    """
-    header = [str(col) for col in df.columns]
-    mask = ~df.astype(str).eq(header).all(axis=1)
-    return df.loc[mask].copy()
-
+WEATHER_COLS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
 
 def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
-    df = _drop_header_rows(df).drop_duplicates()
+    # df = _drop_header_rows(df).drop_duplicates()
     df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
     df["value"] = pd.to_numeric(df["value"], errors="coerce")
     df["datetime_from"] = pd.to_datetime(df["datetime_from"], errors="coerce", utc=True)
     df["datetime_to"] = pd.to_datetime(df["datetime_to"], errors="coerce", utc=True)
     df["timestamp_rollup"] = df["timestamp_rollup"].astype(str).str.lower().str.strip()
     df["metric_name"] = df["metric_name"].astype(str).str.lower().str.strip()
-    df = df.dropna(subset=["sensor_id", "datetime_from", "value"])
+    df = df.dropna(subset=["sensor_id", "datetime_to", "value"])
 
     # Remove obviously bad readings (negative particulate concentration).
     df = df[df["value"] >= 0]
 
     df["sensor_id"] = df["sensor_id"].astype(int)
-    df["reading_date"] = df["datetime_from"].dt.floor("D").dt.tz_localize(None)
+    df["reading_date"] = df["datetime_to"].dt.floor("D").dt.tz_localize(None)
     df = df.rename(columns={"units": "reading_units"})
     return df.reset_index(drop=True)
 
 
 def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
-    df = _drop_header_rows(df).drop_duplicates()
+    # df = _drop_header_rows(df).drop_duplicates()
     df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
-    for col in WEATHER_NUMERIC_COLUMNS:
+    for col in WEATHER_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     df = df.dropna(subset=["date"])
@@ -46,7 +35,7 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
-    df = _drop_header_rows(df).drop_duplicates()
+    # df = _drop_header_rows(df).drop_duplicates()
     df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
     df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
@@ -60,7 +49,7 @@ def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
-    df = _drop_header_rows(df).drop_duplicates()
+    # df = _drop_header_rows(df).drop_duplicates()
     df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
     df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
     df["measurement_name"] = df["measurement_name"].astype(str).str.lower().str.strip()
@@ -83,37 +72,28 @@ def _merge_datasets(measurements: pd.DataFrame, metadata: pd.DataFrame, location
 
 
 def clean_data(
-    raw_dir: str | Path | None = None,
-    output_path: str | Path | None = None,
+    df_dicts
 ) -> pd.DataFrame:
     """
     Load, clean, and merge raw CSV datasets into a single DataFrame.
 
     Parameters
     ----------
-    raw_dir:
-        Directory containing the raw CSV files. Defaults to `<project_root>/data/raw`.
-    output_path:
-        Optional path to persist the cleaned, merged dataset (CSV). If omitted,
-        the dataset is returned but not saved.
+    df_dicts:
+        Dictionary containing all dataframes that is to be cleaned.
 
     Returns
     -------
-    pandas.DataFrame
+    dict:
         Cleaned and merged dataset containing measurements, sensor metadata,
-        location context, and weather observations.
+        location context, and weather observations in the same dictionary package
     """
-    raw_data: Dict[str, pd.DataFrame] = load_raw_data(raw_dir)
-    measurements = _clean_measurements(raw_data["measurements"])
-    weather = _clean_weather(raw_data["weather"])
-    locations = _clean_locations(raw_data["locations"])
-    metadata = _clean_sensor_metadata(raw_data["sensors_metadata"])
 
-    combined = _merge_datasets(measurements, metadata, locations, weather)
+    # locations = _clean_locations(df_dicts["locations"])
+    # metadata = _clean_sensor_metadata(df_dicts["sensors_metadata"])
+    measurements = _clean_measurements(df_dicts["sensors_measurements"])
+    # weather = _clean_weather(df_dicts["weather"])
 
-    if output_path:
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        combined.to_csv(output_path, index=False)
+    # combined = _merge_datasets(measurements, metadata, locations, weather)
 
-    return combined
+    return measurements
