@@ -33,7 +33,7 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
         # 86400: number of seconds in a day
         ~((df["seconds_count"] > 86400) & (df["is_duplicate_date"]))
     ]
-    df = df.drop(columns=["is_duplicate_date", "seconds_count"])
+    df = df.drop(columns=["is_duplicate_date", "seconds_count"], errors="ignore")
     
     return df.reset_index(drop=True)
 
@@ -123,10 +123,17 @@ def _data_transform(
     )
     pivoted_measurements = pivoted_measurements.reset_index()
 
+    # Removing columns without any data
+    cols_with_null = pivoted_measurements.isna().sum()
+    row_count = pivoted_measurements.shape[0]
+    cols_without_data = cols_with_null[cols_with_null == row_count]
+    pivoted_measurements = pivoted_measurements.drop(columns=cols_without_data.index, errors="ignore")
+
     combined = (
         pivoted_measurements
             .merge(weather, left_on="reading_date", right_on="date", how="left")
     )
+    combined = combined.drop(columns=["date"], errors="ignore")
     
     return combined
 
