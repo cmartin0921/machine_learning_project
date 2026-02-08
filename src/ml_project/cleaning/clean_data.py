@@ -150,7 +150,8 @@ def clean_data(
     -------
     dict:
         Cleaned and merged dataset containing measurements, sensor metadata,
-        location context, and weather observations in the same dictionary package
+        location context, and weather observations in the same dictionary package.
+        Also included is a cleaned dataset that is to be used for feature engineering
     """
 
     locations = _clean_locations(df_dicts["locations"])

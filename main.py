@@ -5,7 +5,8 @@ import yaml
 
 from openaq import OpenAQ
 from ml_project.utils import get_project_directories, setup_logger
-from ml_project.data import openaq_extract_data, meteostat_extract_data, clean_data
+from ml_project.data import openaq_extract_data, meteostat_extract_data
+from ml_project.cleaning import clean_data
 from ml_project.feature_engineering import (
     generate_features, impute_missing_data,
     one_hot_encoding, remove_outliers,
