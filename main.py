@@ -46,21 +46,67 @@ def main():
         "sensors_measurements": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"]),
         "weather": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
     }
+    
+    for name, df in dataframes_dict_raw.items():
+        logger.info("Loaded %s: %d rows, %d columns", name, df.shape[0], df.shape[1])
 
     # Cleaning the data
-    cleaned_data_dict = clean_data(dataframes_dict_raw)
+        cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
+    
+    logger.info("Cleaned dataframe shape: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
+    logger.info("Columns: %s", list(cleaned_df.columns))
+    
+    # Log missing values summary
+    missing_counts = cleaned_df.isna().sum()
+    missing_cols = missing_counts[missing_counts > 0]
+    if len(missing_cols) > 0:
+        logger.info("Missing values per column:")
+        for col, count in missing_cols.items():
+            pct = (count / len(cleaned_df)) * 100
+            logger.info("  %s: %d (%.1f%%)", col, count, pct)
+    else:
+        logger.info("No missing values found")
 
     # Detect outliers first (for inspection/logging)
     outliers = detect_outliers(cleaned_df)
-    logger.info("Columns with outliers: %s", list(outliers.keys()))
-    for col, outlier_list in outliers.items():
-        logger.info("  %s: %d outliers", col, len(outlier_list))
+    
+    if outliers:
+        logger.info("Columns with outliers: %s", list(outliers.keys()))
+        total_outliers = sum(len(v) for v in outliers.values())
+        logger.info("Total outliers detected: %d", total_outliers)
+        for col, outlier_list in outliers.items():
+            logger.info("  %s: %d outliers", col, len(outlier_list))
+    else:
+        logger.info("No outliers detected")
 
     # Handle outliers by capping values at IQR fences
     cleaned_df = handle_outliers(cleaned_df, method="cap")
+    logger.info("Outliers capped. Shape after handling: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
+    
+    # Impute missing data
     cleaned_df = impute_missing_data(cleaned_df)
-
+    missing_after = cleaned_df.isna().sum().sum()
+    logger.info("Missing values after imputation: %d", missing_after)
+    logger.info("Shape after imputation: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
+    
+    # Generate features
+    featured_df = generate_features(cleaned_df)
+    new_features = set(featured_df.columns) - set(cleaned_df.columns)
+    logger.info("Generated %d new features", len(new_features))
+    if new_features:
+        logger.info("New features: %s", list(new_features))
+    logger.info("Shape after feature generation: %d rows, %d columns", featured_df.shape[0], featured_df.shape[1])
+    
+    # One-hot encode categorical columns
+    encoded_df = one_hot_encoding(featured_df)
+    new_encoded_cols = encoded_df.shape[1] - featured_df.shape[1]
+    logger.info("Added %d columns from one-hot encoding", new_encoded_cols)
+    logger.info("Shape after one-hot encoding: %d rows, %d columns", encoded_df.shape[0], encoded_df.shape[1])
+    
+    # Scale numeric features
+    scaled_df = scaling(encoded_df)
+    logger.info("Shape after scaling: %d rows, %d columns", scaled_df.shape[0], scaled_df.shape[1])
 
 if __name__ == "__main__":
     main()
