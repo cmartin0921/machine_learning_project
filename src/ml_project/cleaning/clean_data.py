@@ -120,10 +120,12 @@ def _data_transform(
     )
     pivoted_measurements = pivoted_measurements.reset_index()
 
-    # Removing columns without any data
+    # Removing columns without any data or where majority of data is missing
     cols_with_null = pivoted_measurements.isna().sum()
     row_count = pivoted_measurements.shape[0]
-    cols_without_data = cols_with_null[cols_with_null == row_count]
+    # Determines the minimum threshold of data that needs to exist in order to not be dropped
+    ratio = 0.5
+    cols_without_data = cols_with_null[cols_with_null >= (row_count * ratio)]
     pivoted_measurements = pivoted_measurements.drop(columns=cols_without_data.index, errors="ignore")
 
     combined = (
