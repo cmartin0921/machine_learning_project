@@ -34,26 +34,25 @@ def main():
 
     logger.info("Begin ML Project with the following params:\n%s", yaml.dump(cfg, default_flow_style=False))
 
-    openaq_extract_data(open_aq_client, cfg, directory_paths_dict)
+    # openaq_extract_data(open_aq_client, cfg, directory_paths_dict)
     open_aq_client.close()
 
-    meteostat_extract_data(meteo_client, cfg, directory_paths_dict)
+    # meteostat_extract_data(meteo_client, cfg, directory_paths_dict)
 
     # Loading the data
-    locations_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["locations"])
-    sensors_metadata_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_metadata"])
-    sensors_measurements_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"])
-    weather_daily_df_raw = pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
-
-    dataframes_dict = {
-        "locations": locations_df_raw,
-        "sensors_metadata": sensors_metadata_df_raw,
-        "sensors_measurements": sensors_measurements_df_raw,
-        "weather": weather_daily_df_raw
+    dataframes_dict_raw = {
+        "locations": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["locations"]),
+        "sensors_metadata": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_metadata"]),
+        "sensors_measurements": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"]),
+        "weather": pd.read_csv(directory_paths_dict["data_raw"] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
     }
 
-    # # Cleaning the data
-    cleaned_dataframes_dict = clean_data(dataframes_dict)
+    # Cleaning the data
+    cleaned_data_dict = clean_data(dataframes_dict_raw)
+    cleaned_df = cleaned_data_dict["cleaned"]
+
+
+
 
 if __name__ == "__main__":
     main()
