@@ -12,7 +12,7 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
     df["datetime_to"] = pd.to_datetime(df["datetime_to"], errors="coerce", utc=True)
     df["timestamp_rollup"] = df["timestamp_rollup"].astype(str).str.lower().str.strip()
     df["metric_name"] = df["metric_name"].astype(str).str.lower().str.strip()
-    df = df.dropna(subset=["sensor_id", "datetime_to", "value"])
+    df = df.dropna(subset=["sensor_id", "datetime_to", "metric_name", "value"])
 
     # Remove obviously bad readings (negative particulate concentration).
     df["value"] = df["value"].where(
@@ -23,6 +23,17 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
     df["sensor_id"] = df["sensor_id"].astype(int)
     df["reading_date"] = df["datetime_to"].dt.floor("D").dt.tz_localize(None)
     df = df.rename(columns={"units": "reading_units"})
+
+    df = df.drop_duplicates(subset=["sensor_id", "reading_date", "value"], keep="first")
+
+    # Help find sensors with multiple readings a day
+    df["is_duplicate_date"] = df.duplicated(subset=["sensor_id", "reading_date"], keep=False)
+    df["seconds_count"] = (df["datetime_to"] - df["datetime_from"]).dt.total_seconds()
+    df = df[
+        # 86400: number of seconds in a day
+        ~((df["seconds_count"] > 86400) & (df["is_duplicate_date"]))
+    ]
+    df = df.drop(columns=["is_duplicate_date", "seconds_count"])
     
     return df.reset_index(drop=True)
 
@@ -67,7 +78,12 @@ def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def _merge_datasets(measurements: pd.DataFrame, metadata: pd.DataFrame, locations: pd.DataFrame, weather: pd.DataFrame) -> pd.DataFrame:
+def _merge_datasets(
+    measurements: pd.DataFrame,
+    metadata: pd.DataFrame,
+    locations: pd.DataFrame,
+    weather: pd.DataFrame
+) -> pd.DataFrame:
     combined = measurements.merge(metadata, on="sensor_id", how="left", suffixes=("", "_meta"))
     combined = combined.merge(locations, on="location_id", how="left", suffixes=("", "_location"))
     combined = combined.merge(weather, left_on="reading_date", right_on="date", how="left")
@@ -76,6 +92,10 @@ def _merge_datasets(measurements: pd.DataFrame, metadata: pd.DataFrame, location
     combined = combined.sort_values(["reading_date", "sensor_id"]).reset_index(drop=True)
     
     return combined
+
+# def _data_transformation(
+    
+# )
 
 
 def clean_data(
@@ -96,11 +116,13 @@ def clean_data(
         location context, and weather observations in the same dictionary package
     """
 
-    # locations = _clean_locations(df_dicts["locations"])
-    # metadata = _clean_sensor_metadata(df_dicts["sensors_metadata"])
-    # measurements = _clean_measurements(df_dicts["sensors_measurements"])
+    locations = _clean_locations(df_dicts["locations"])
+    metadata = _clean_sensor_metadata(df_dicts["sensors_metadata"])
+    measurements = _clean_measurements(df_dicts["sensors_measurements"])
     weather = _clean_weather(df_dicts["weather"])
+
+    # asdf = _data_transformation(measurements, metadata)
 
     # combined = _merge_datasets(measurements, metadata, locations, weather)
 
-    return weather
+    return locations, metadata, measurements, weather
