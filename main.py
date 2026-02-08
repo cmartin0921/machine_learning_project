@@ -39,9 +39,11 @@ def main():
 
     meteostat_extract_data(meteo_client, cfg, directory_paths_dict)
 
-    # # Loading the data
-    # sensors_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / "sensors_measurement.csv")
-    # weather_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / "weather_daily.csv")
+    # Loading the data
+    locations_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["locations"])
+    sensors_metadata_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["sensors_metadata"])
+    sensors_measurements_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["openaq"]["sensors_measurements"])
+    weather_daily_df_raw = pd.read_csv(directory_paths_dict['data_raw'] / cfg["outputs"]["files"]["meteostat"]["weather_daily"])
 
     # # Cleaning the data
     # sensors_df, weather_df = clean_data(sensors_df_raw, weather_df_raw)
