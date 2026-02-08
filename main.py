@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 import yaml
-from pathlib import Path
 
 from openaq import OpenAQ
 from ml_project.utils import get_project_directories, setup_logger
