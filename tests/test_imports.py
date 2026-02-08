@@ -1,5 +1,6 @@
 # pylint: disable=import-outside-toplevel
 
+
 def test_can_import_root_package():
     import ml_project
     assert ml_project is not None
@@ -15,23 +16,24 @@ def test_can_import_subpackages():
 
 
 def test_data_functions_are_importable_and_callable():
-    from ml_project.data import load_raw_data, clean_data
+    from ml_project.cleaning import clean_data
 
-    assert callable(load_raw_data)
     assert callable(clean_data)
 
 
 def test_feature_engineering_functions_are_importable_and_callable():
     from ml_project.feature_engineering import (
         impute_missing_data,
-        remove_outliers,
         one_hot_encoding,
         scaling,
         generate_features,
+        detect_outliers,
+        handle_outliers
     )
 
     assert callable(impute_missing_data)
-    assert callable(remove_outliers)
+    assert callable(handle_outliers)
+    assert callable(detect_outliers)
     assert callable(one_hot_encoding)
     assert callable(scaling)
     assert callable(generate_features)
