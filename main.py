@@ -25,8 +25,8 @@ def main():
     open_aq_api = os.getenv("OPEN_AQ_API_KEY")
     meteostat_api = os.getenv("METEOSTAT_API_KEY")
 
-    open_aq_client = OpenAQ(api_key=open_aq_api)
-    meteo_client = MeteoStatClient(api_key=meteostat_api)
+    # open_aq_client = OpenAQ(api_key=open_aq_api)
+    # meteo_client = MeteoStatClient(api_key=meteostat_api)
 
     cfg_path = directory_paths_dict["configs"] / "data.yaml"
     with cfg_path.open("r", encoding="utf-8") as f:
@@ -35,7 +35,7 @@ def main():
     logger.info("Begin ML Project with the following params:\n%s", yaml.dump(cfg, default_flow_style=False))
 
     # openaq_extract_data(open_aq_client, cfg, directory_paths_dict)
-    open_aq_client.close()
+    # open_aq_client.close()
 
     # meteostat_extract_data(meteo_client, cfg, directory_paths_dict)
 
