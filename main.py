@@ -111,9 +111,11 @@ def main():
     x_train, x_test, y_train, y_test = train_test_split(encoded_df, train_test_split_pct)
     logger.info("Train set: %d rows, Test set: %d rows", len(x_train) if x_train is not None else 0, len(x_test) if x_test is not None else 0)
 
-    # Scale numeric features
-    scaled_df = scaling(encoded_df)
-    logger.info("Shape after scaling: %d rows, %d columns", scaled_df.shape[0], scaled_df.shape[1])
+    # Scale numeric features (fit on train only, transform both)
+    x_train_scaled, x_test_scaled = scaling(x_train, x_test)
+    logger.info("Scaling complete. Train shape: %s, Test shape: %s", 
+                x_train_scaled.shape if x_train_scaled is not None else None, 
+                x_test_scaled.shape if x_test_scaled is not None else None)
 
     # Load model configuration
     model_cfg_path = directory_paths_dict["configs"] / "model.yaml"
@@ -128,7 +130,7 @@ def main():
     logger.info("Model created: %s", type(model).__name__ if model else "None")
     
     # Train the model
-    trained_model = train_model(model)
+    trained_model = train_model(model, x_train)
     logger.info("Model training complete")
 
     # Evaluate the model
