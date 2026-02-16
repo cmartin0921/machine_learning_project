@@ -11,6 +11,7 @@ from ml_project.feature_engineering import (
     generate_features, handle_outliers, detect_outliers, impute_missing_data,
     one_hot_encoding, scaling
 )
+from ml_project.models import create_model, train_model
 from ml_project.data.MeteoStatClient import MeteoStatClient
 
 def main():
@@ -107,6 +108,22 @@ def main():
     # Scale numeric features
     scaled_df = scaling(encoded_df)
     logger.info("Shape after scaling: %d rows, %d columns", scaled_df.shape[0], scaled_df.shape[1])
+
+    # Load model configuration
+    model_cfg_path = directory_paths_dict["configs"] / "model.yaml"
+    with model_cfg_path.open("r", encoding="utf-8") as f:
+        model_cfg = yaml.safe_load(f) or {}
+    
+    model_params = model_cfg.get("model_params", {})
+    logger.info("Creating model with params: %s", model_params)
+    
+    # Create the model
+    model = create_model(model_params)
+    logger.info("Model created: %s", type(model).__name__ if model else "None")
+    
+    # Train the model
+    trained_model = train_model(model)
+    logger.info("Model training complete")
 
 if __name__ == "__main__":
     main()
