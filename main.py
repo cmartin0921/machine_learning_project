@@ -127,7 +127,7 @@ def main():
     logger.info("Model training complete")
 
     # Evaluate the model
-    metrics = evaluate_model(trained_model)
+    metrics = evaluate_model(trained_model, test_data)
     logger.info("Model evaluation complete: %s", metrics)
 
 if __name__ == "__main__":
