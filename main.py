@@ -106,6 +106,8 @@ def main():
     logger.info("Added %d columns from one-hot encoding", new_encoded_cols)
     logger.info("Shape after one-hot encoding: %d rows, %d columns", encoded_df.shape[0], encoded_df.shape[1])
     
+    
+
     # Scale numeric features
     scaled_df = scaling(encoded_df)
     logger.info("Shape after scaling: %d rows, %d columns", scaled_df.shape[0], scaled_df.shape[1])
