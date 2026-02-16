@@ -1,2 +1,5 @@
-def train_model():
-    return 1
+# Import classes and function from sklearn
+
+def train_model(model, x_train):
+
+    return model
