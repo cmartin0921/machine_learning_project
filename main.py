@@ -9,7 +9,7 @@ from ml_project.data import openaq_extract_data, meteostat_extract_data
 from ml_project.cleaning import clean_data
 from ml_project.feature_engineering import (
     generate_features, handle_outliers, detect_outliers, impute_missing_data,
-    one_hot_encoding, scaling
+    one_hot_encoding, scaling, train_test_split
 )
 from ml_project.models import create_model, train_model
 from ml_project.evaluation import evaluate_model
@@ -106,7 +106,10 @@ def main():
     logger.info("Added %d columns from one-hot encoding", new_encoded_cols)
     logger.info("Shape after one-hot encoding: %d rows, %d columns", encoded_df.shape[0], encoded_df.shape[1])
     
-    
+    # Train-test split
+    train_test_split_pct = 0.3  # TODO: add this to a .yaml file
+    x_train, x_test, y_train, y_test = train_test_split(encoded_df, train_test_split_pct)
+    logger.info("Train set: %d rows, Test set: %d rows", len(x_train) if x_train is not None else 0, len(x_test) if x_test is not None else 0)
 
     # Scale numeric features
     scaled_df = scaling(encoded_df)
@@ -129,7 +132,7 @@ def main():
     logger.info("Model training complete")
 
     # Evaluate the model
-    metrics = evaluate_model(trained_model, test_data)
+    metrics = evaluate_model(trained_model, (x_test, y_test))
     logger.info("Model evaluation complete: %s", metrics)
 
 if __name__ == "__main__":
