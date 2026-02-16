@@ -12,6 +12,7 @@ from ml_project.feature_engineering import (
     one_hot_encoding, scaling
 )
 from ml_project.models import create_model, train_model
+from ml_project.evaluation import evaluate_model
 from ml_project.data.MeteoStatClient import MeteoStatClient
 
 def main():
@@ -52,7 +53,7 @@ def main():
         logger.info("Loaded %s: %d rows, %d columns", name, df.shape[0], df.shape[1])
 
     # Cleaning the data
-        cleaned_data_dict = clean_data(dataframes_dict_raw)
+    cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
     
     logger.info("Cleaned dataframe shape: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
@@ -115,7 +116,7 @@ def main():
         model_cfg = yaml.safe_load(f) or {}
     
     model_params = model_cfg.get("model_params", {})
-    logger.info("Creating model with params: %s", model_params)
+    logger.info("Creating model with params:\n%s", yaml.dump(model_params, default_flow_style=False))
     
     # Create the model
     model = create_model(model_params)
@@ -124,6 +125,10 @@ def main():
     # Train the model
     trained_model = train_model(model)
     logger.info("Model training complete")
+
+    # Evaluate the model
+    metrics = evaluate_model(trained_model)
+    logger.info("Model evaluation complete: %s", metrics)
 
 if __name__ == "__main__":
     main()
