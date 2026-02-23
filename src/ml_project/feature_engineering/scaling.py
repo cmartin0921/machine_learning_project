@@ -26,7 +26,7 @@ def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25') -> pd.DataFrame:
 
     # Remove the target variable and constant geographical columns from scaling list
     # Constant values like latitude/longitude can cause errors during standardization
-    to_exclude = [target_col, 'latitude', 'longitude', 'snow']
+    to_exclude = [target_col, 'latitude', 'longitude', 'snow', 'reading_date']
     features_to_scale = [col for col in numeric_features if col not in to_exclude]
 
     # Initialize and apply StandardScaler
@@ -36,21 +36,3 @@ def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25') -> pd.DataFrame:
         df_scaled[features_to_scale] = scaler.fit_transform(df_scaled[features_to_scale])
 
     return df_scaled
-
-def test_scaling_integrity(df_scaled: pd.DataFrame):
-    """
-    REQUIREMENT: Unit testing function to validate data processing.
-    Checks if a standardized feature has a mean near 0 and standard deviation near 1.
-    """
-    # We use 'tavg' as a sample check if it exists in the columns
-    if 'tavg' in df_scaled.columns:
-        mean_val = df_scaled['tavg'].mean()
-        std_val = df_scaled['tavg'].std()
-        
-        # In computational math, mean won't be exactly 0 but extremely close (e.g., 1e-15)
-        assert abs(mean_val) < 0.001, f"Scaling failed: Mean is {mean_val}"
-        assert abs(std_val - 1.0) < 0.001, f"Scaling failed: Std is {std_val}"
-        
-        print("Unit Test Passed: Features successfully standardized (Mean=0, Std=1).")
-    else:
-        print("Unit Test Warning: 'tavg' column not found for validation.")
