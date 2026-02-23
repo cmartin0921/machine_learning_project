@@ -5,10 +5,7 @@ optimal performance for the Machine Learning model.
 """
 
 import pandas as pd
-
-# IMPORTANT: To prevent data leakage, scaling must be done as follows:
-#   1. FIT the scaler on the TRAINING data only (learn mean/std or min/max)
-#   2. TRANSFORM both training and test data using those same parameters
+from sklearn.preprocessing import StandardScaler
 
 def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25') -> pd.DataFrame:
     """
