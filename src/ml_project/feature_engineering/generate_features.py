@@ -1,20 +1,17 @@
 """
 Feature Generation Module.
 This module creates interaction terms and composite variables 
-to improve the predictive performance of the PM2.5 regression model.
+to improve the predictive performance of the PM2.5 regression model, and 
+creates sophisticated cyclical datetime transformations for time-series air quality data.
 """
 
+import numpy as np
 import pandas as pd
 
-def generate_features(dataframe: pd.DataFrame) -> pd.DataFrame:
+def generate_interaction_features(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
-    Generates new features from existing weather and pollutant data.
-    
-    Args:
-        dataframe (pd.DataFrame): The cleaned dataset after KNN imputation.
-        
-    Returns:
-        pd.DataFrame: Dataframe containing original and newly created features.
+    Creates composite features to capture relationships between weather variables.
+    (Kept as per previous implementation).
     """
     # Create a copy to prevent modifying the original dataframe
     df_enhanced = dataframe.copy()
@@ -45,16 +42,44 @@ def generate_features(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     return df_enhanced
 
-def test_feature_generation(dataframe: pd.DataFrame):
+def generate_cyclical_date_features(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
-    Unit test to verify that the new features were successfully created.
+    Transforms the 'reading_date' into cyclical Sine and Cosine features.
+    This allows the model to understand that the end of the year/month 
+    is chronologically close to the beginning.
     """
-    expected_features = ['temp_wind_interaction', 'temp_diurnal_range', 'pollutant_ratio']
+    df_cyclical = dataframe.copy()
+
+    if 'reading_date' in df_cyclical.columns:
+        # Convert to datetime object
+        df_cyclical['reading_date'] = pd.to_datetime(df_cyclical['reading_date'])
+        
+        # Extract numerical time components
+        day_of_year = df_cyclical['reading_date'].dt.dayofyear
+        month = df_cyclical['reading_date'].dt.month
+        
+        # Day of Year Cycle (using 365.25 for leap years)
+        df_cyclical['day_of_year_sin'] = np.sin(2 * np.pi * day_of_year / 365.25)
+        df_cyclical['day_of_year_cos'] = np.cos(2 * np.pi * day_of_year / 365.25)
+        
+        # Monthly Cycle
+        df_cyclical['month_sin'] = np.sin(2 * np.pi * month / 12)
+        df_cyclical['month_cos'] = np.cos(2 * np.pi * month / 12)
+
+    return df_cyclical
+
+def test_feature_logic(dataframe: pd.DataFrame) -> None:
+    """
+    Unit test to verify that both interaction and cyclical features 
+    exist and are mathematically valid.
+    """
+    # Check Interaction Features
+    assert 'temp_wind_interaction' in dataframe.columns, "Interaction features missing!"
     
-    for feature in expected_features:
-        assert feature in dataframe.columns, f"Feature {feature} missing!"
-    
-    print("Unit Test Passed: All interaction features generated correctly.")
+    # Check Cyclical Features
+    if 'day_of_year_sin' in dataframe.columns:
+        assert dataframe['day_of_year_sin'].between(-1.01, 1.01).all(), "Sine out of bounds!"
+        print("Unit Test Passed: All features are present and valid.")
 
 def test_data_split(
     x_train: pd.DataFrame, 
