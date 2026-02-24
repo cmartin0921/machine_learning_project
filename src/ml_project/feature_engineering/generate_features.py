@@ -8,7 +8,7 @@ creates sophisticated cyclical datetime transformations for time-series air qual
 import numpy as np
 import pandas as pd
 
-def generate_interaction_features(dataframe: pd.DataFrame) -> pd.DataFrame:
+def generate_features(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
     Creates composite features to capture relationships between weather variables.
     (Kept as per previous implementation).
