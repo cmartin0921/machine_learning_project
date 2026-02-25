@@ -7,11 +7,17 @@ creates sophisticated cyclical datetime transformations for time-series air qual
 
 import numpy as np
 import pandas as pd
+import numpy as np
 
 def generate_features(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
-    Creates composite features to capture relationships between weather variables.
-    (Kept as per previous implementation).
+    Generates new features from existing weather and pollutant data.
+    
+    Args:
+        dataframe (pd.DataFrame): The cleaned dataset after imputation.
+        
+    Returns:
+        pd.DataFrame: Dataframe containing original and newly created features.
     """
     # Create a copy to prevent modifying the original dataframe
     df_enhanced = dataframe.copy()

@@ -7,7 +7,7 @@ optimal performance for the Machine Learning model.
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25') -> pd.DataFrame:
+def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25', existing_scaler=None) -> pd.DataFrame:
     """
     Standardizes numeric features to have a mean of 0 and a standard deviation of 1.
     
@@ -30,9 +30,12 @@ def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25') -> pd.DataFrame:
     features_to_scale = [col for col in numeric_features if col not in to_exclude]
 
     # Initialize and apply StandardScaler
-    scaler = StandardScaler()
+    if existing_scaler is None:
+        scaler = StandardScaler()
+    else:
+        scaler = existing_scaler
     
     if features_to_scale:
         df_scaled[features_to_scale] = scaler.fit_transform(df_scaled[features_to_scale])
 
-    return df_scaled
+    return df_scaled, scaler
