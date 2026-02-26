@@ -9,7 +9,7 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
     df["datetime_to"] = pd.to_datetime(df["datetime_to"], errors="coerce", utc=True)
     df["timestamp_rollup"] = df["timestamp_rollup"].astype(str).str.lower().str.strip()
     df["metric_name"] = df["metric_name"].astype(str).str.lower().str.strip()
-    df = df.dropna(subset=["sensor_id", "datetime_to", "metric_name", "value"])
+    df = df.dropna(subset=["sensor_id", "datetime_to", "metric_name", "value"]).copy()
 
     # Remove obviously bad readings (negative particulate concentration).
     df["value"] = df["value"].where(
@@ -62,7 +62,7 @@ def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
     df["country_id"] = pd.to_numeric(df["country_id"], errors="coerce").astype("Int64")
     df["first_read_at"] = pd.to_datetime(df["first_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
     df["last_read_at"] = pd.to_datetime(df["last_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
-    df = df.dropna(subset=["location_id"])
+    df = df.dropna(subset=["location_id"]).copy()
     df["location_id"] = df["location_id"].astype(int)
     df["country_id"] = df["country_id"].astype(int)
     
@@ -74,7 +74,7 @@ def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
     df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
     df["measurement_name"] = df["measurement_name"].astype(str).str.lower().str.strip()
     df["measurement"] = df["measurement"].astype(str).str.lower().str.strip()
-    df = df.dropna(subset=["sensor_id", "location_id"])
+    df = df.dropna(subset=["sensor_id", "location_id"]).copy()
     df["sensor_id"] = df["sensor_id"].astype(int)
     df["location_id"] = df["location_id"].astype(int)
     df = df.rename(columns={"units": "sensor_units"})
