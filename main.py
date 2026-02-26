@@ -56,7 +56,6 @@ def main():
 
     # Cleaning the data
     cleaned_data_dict = clean_data(dataframes_dict_raw)
-    cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
     
     logger.info("Cleaned dataframe shape: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
