@@ -5,12 +5,14 @@ import yaml
 
 from openaq import OpenAQ
 from ml_project.utils import get_project_directories, setup_logger
-from ml_project.data import openaq_extract_data, meteostat_extract_data
+from ml_project.data import openaq_extract_data, meteostat_extract_data, split_dataset
 from ml_project.cleaning import clean_data
 from ml_project.feature_engineering import (
     generate_features, handle_outliers, detect_outliers, impute_missing_data,
     one_hot_encoding, scaling, train_test_split
 )
+from ml_project.models import create_model, train_model
+from ml_project.evaluation import evaluate_model
 from ml_project.models import create_model, train_model
 from ml_project.evaluation import evaluate_model
 from ml_project.data.MeteoStatClient import MeteoStatClient
@@ -54,6 +56,7 @@ def main():
 
     # Cleaning the data
     cleaned_data_dict = clean_data(dataframes_dict_raw)
+    cleaned_data_dict = clean_data(dataframes_dict_raw)
     cleaned_df = cleaned_data_dict["cleaned"]
     
     logger.info("Cleaned dataframe shape: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
@@ -79,12 +82,12 @@ def main():
         logger.info("Total outliers detected: %d", total_outliers)
         for col, outlier_list in outliers.items():
             logger.info("  %s: %d outliers", col, len(outlier_list))
+
+        # Handle outliers by capping values at IQR fences
+        cleaned_df = handle_outliers(cleaned_df, method="cap")
+        logger.info("Outliers capped. Shape after handling: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
     else:
         logger.info("No outliers detected")
-
-    # Handle outliers by capping values at IQR fences
-    cleaned_df = handle_outliers(cleaned_df, method="cap")
-    logger.info("Outliers capped. Shape after handling: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
     
     # Impute missing data
     cleaned_df = impute_missing_data(cleaned_df)
@@ -106,6 +109,37 @@ def main():
     logger.info("Added %d columns from one-hot encoding", new_encoded_cols)
     logger.info("Shape after one-hot encoding: %d rows, %d columns", encoded_df.shape[0], encoded_df.shape[1])
     
+    # Train-test split
+    train_test_split_pct = 0.3  # TODO: add this to a .yaml file
+    x_train, x_test, y_train, y_test = split_dataset(encoded_df, test_size=train_test_split_pct)
+    logger.info("Train set: %d rows, Test set: %d rows", len(x_train) if x_train is not None else 0, len(x_test) if x_test is not None else 0)
+
+    # Scale numeric features (fit on train only, transform both)
+    x_train_scaled, train_scaler = scaling(x_train)
+    x_test_scaled, _ = scaling(x_test, existing_scaler=train_scaler)
+    logger.info("Scaling complete. Train shape: %s, Test shape: %s", 
+                x_train_scaled.shape if x_train_scaled is not None else None, 
+                x_test_scaled.shape if x_test_scaled is not None else None)
+
+    # Load model configuration
+    model_cfg_path = directory_paths_dict["configs"] / "model.yaml"
+    with model_cfg_path.open("r", encoding="utf-8") as f:
+        model_cfg = yaml.safe_load(f) or {}
+    
+    model_params = model_cfg.get("model_params", {})
+    logger.info("Creating model with params:\n%s", yaml.dump(model_params, default_flow_style=False))
+    
+    # Create the model
+    model = create_model(model_params)
+    logger.info("Model created: %s", type(model).__name__ if model else "None")
+    
+    # Train the model
+    trained_model = train_model(model, x_train)
+    logger.info("Model training complete")
+
+    # Evaluate the model
+    metrics = evaluate_model(trained_model, (x_test, y_test))
+    logger.info("Model evaluation complete: %s", metrics)
     # Train-test split
     train_test_split_pct = 0.3  # TODO: add this to a .yaml file
     x_train, x_test, y_train, y_test = train_test_split(encoded_df, train_test_split_pct)
