@@ -79,12 +79,12 @@ def main():
         logger.info("Total outliers detected: %d", total_outliers)
         for col, outlier_list in outliers.items():
             logger.info("  %s: %d outliers", col, len(outlier_list))
+
+        # Handle outliers by capping values at IQR fences
+        cleaned_df = handle_outliers(cleaned_df, method="cap")
+        logger.info("Outliers capped. Shape after handling: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
     else:
         logger.info("No outliers detected")
-
-    # Handle outliers by capping values at IQR fences
-    cleaned_df = handle_outliers(cleaned_df, method="cap")
-    logger.info("Outliers capped. Shape after handling: %d rows, %d columns", cleaned_df.shape[0], cleaned_df.shape[1])
     
     # Impute missing data
     cleaned_df = impute_missing_data(cleaned_df)
@@ -117,9 +117,6 @@ def main():
     logger.info("Scaling complete. Train shape: %s, Test shape: %s", 
                 x_train_scaled.shape if x_train_scaled is not None else None, 
                 x_test_scaled.shape if x_test_scaled is not None else None)
-
-    to_save_df = encoded_df               # Change this
-    to_save_df.to_csv(directory_paths_dict["data_interim"] / "temp.csv", index=False)
 
     # Load model configuration
     model_cfg_path = directory_paths_dict["configs"] / "model.yaml"
