@@ -1,6 +1,5 @@
 import csv
 from typing import Union, List, Dict, TextIO
-from pathlib import Path
 
 def write_csv(
     file_handle: TextIO,
@@ -13,7 +12,7 @@ def write_csv(
 
     rows = [data] if isinstance(data, dict) else data
     first_row = rows[0]
-    
+
     is_empty_file = file_handle.tell() == 0
 
     try:
@@ -22,7 +21,7 @@ def write_csv(
             if is_empty_file:
                 writer.writeheader()
             writer.writerows(rows)
-            
+
         else:
             writer = csv.writer(file_handle)
             if is_empty_file:
@@ -31,8 +30,7 @@ def write_csv(
                 else:
                     raise ValueError("File is empty and no file_header provided for list data.")
             writer.writerows(rows)
-            
+
         return True
     except Exception as e:
         raise e
-    

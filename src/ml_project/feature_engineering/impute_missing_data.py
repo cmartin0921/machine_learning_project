@@ -57,7 +57,7 @@ def impute_missing_data(
             if result[col].isna().any() and "_month" in result.columns:
                 month_means = result.groupby("_month")[col].transform("mean")
                 result[col] = result[col].fillna(month_means)
-                
+
     # Remove helper columns
     result = result.drop(columns=["_month_year", "_month"], errors="ignore")
 
