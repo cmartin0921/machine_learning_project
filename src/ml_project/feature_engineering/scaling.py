@@ -5,19 +5,22 @@ optimal performance for the Machine Learning model.
 """
 
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 # IMPORTANT: To prevent data leakage, scaling must be done as follows:
 #   1. FIT the scaler on the TRAINING data only (learn mean/std or min/max)
 #   2. TRANSFORM both training and test data using those same parameters
 
-def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25', existing_scaler=None) -> pd.DataFrame:
+def scaling(
+    dataframe: pd.DataFrame, target_col: str = 'pm25', existing_scaler=None
+) -> pd.DataFrame:
     """
     Standardizes numeric features to have a mean of 0 and a standard deviation of 1.
-    
+
     Args:
         dataframe (pd.DataFrame): The dataset containing raw or engineered features.
         target_col (str): The name of the target variable to be excluded from scaling.
-        
+
     Returns:
         pd.DataFrame: A new dataframe with scaled numeric features.
     """
@@ -37,7 +40,7 @@ def scaling(dataframe: pd.DataFrame, target_col: str = 'pm25', existing_scaler=N
         scaler = StandardScaler()
     else:
         scaler = existing_scaler
-    
+
     if features_to_scale:
         df_scaled[features_to_scale] = scaler.fit_transform(df_scaled[features_to_scale])
 

@@ -43,38 +43,41 @@ def detect_outliers(
         (row_index, value, lower_fence, upper_fence) for each outlier.
     """
     # Determine which columns to exclude
-    exclude_set = set(exclude_columns) if exclude_columns is not None else set(DEFAULT_EXCLUDE_COLUMNS)
-    
+    exclude_set = (
+        set(exclude_columns) if exclude_columns is not None
+        else set(DEFAULT_EXCLUDE_COLUMNS)
+    )
+
     # Determine which columns to process
     if columns is not None:
         num_cols: List[str] = [c for c in columns if c not in exclude_set]
     else:
         all_numeric = df.select_dtypes(include=["number"]).columns.tolist()
         num_cols = [c for c in all_numeric if c not in exclude_set]
-    
+
     outliers: Dict[str, List[Tuple[int, float, float, float]]] = {}
-    
+
     for col in num_cols:
         series = df[col]
         if series.dropna().empty:
             continue
-        
+
         q1 = series.quantile(0.25)
         q3 = series.quantile(0.75)
         iqr = q3 - q1
         lower = q1 - iqr_multiplier * iqr
         upper = q3 + iqr_multiplier * iqr
-        
+
         # Find outlier indices (excluding NaN values)
         outlier_mask = ~series.between(lower, upper) & series.notna()
         outlier_indices = df.index[outlier_mask].tolist()
-        
+
         if outlier_indices:
             outliers[col] = [
                 (idx, series.loc[idx], lower, upper)
                 for idx in outlier_indices
             ]
-    
+
     return outliers
 
 
@@ -115,17 +118,20 @@ def handle_outliers(
         NaNs are preserved.
     """
     df_out = df.copy()
-    
+
     # Determine which columns to exclude
-    exclude_set = set(exclude_columns) if exclude_columns is not None else set(DEFAULT_EXCLUDE_COLUMNS)
-    
+    exclude_set = (
+        set(exclude_columns) if exclude_columns is not None
+        else set(DEFAULT_EXCLUDE_COLUMNS)
+    )
+
     # Determine which columns to process
     if columns is not None:
         num_cols: List[str] = [c for c in columns if c not in exclude_set]
     else:
         all_numeric = df_out.select_dtypes(include=["number"]).columns.tolist()
         num_cols = [c for c in all_numeric if c not in exclude_set]
-    
+
     if not num_cols:
         return df_out
 
@@ -143,17 +149,17 @@ def handle_outliers(
             upper = q3 + iqr_multiplier * iqr
             mask &= series.between(lower, upper) | series.isna()
         return df_out.loc[mask].reset_index(drop=True)
-    
-    else:  # method == "cap"
-        # Cap outliers at the fence boundaries (winsorization)
-        for col in num_cols:
-            series = df_out[col]
-            if series.dropna().empty:
-                continue
-            q1 = series.quantile(0.25)
-            q3 = series.quantile(0.75)
-            iqr = q3 - q1
-            lower = q1 - iqr_multiplier * iqr
-            upper = q3 + iqr_multiplier * iqr
-            df_out[col] = series.clip(lower=lower, upper=upper)
-        return df_out
+
+    # method == "cap"
+    # Cap outliers at the fence boundaries (winsorization)
+    for col in num_cols:
+        series = df_out[col]
+        if series.dropna().empty:
+            continue
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - iqr_multiplier * iqr
+        upper = q3 + iqr_multiplier * iqr
+        df_out[col] = series.clip(lower=lower, upper=upper)
+    return df_out

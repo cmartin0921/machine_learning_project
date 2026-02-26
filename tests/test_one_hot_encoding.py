@@ -1,7 +1,6 @@
 # pylint: disable=import-outside-toplevel
 """Tests for one_hot_encoding function."""
 import pandas as pd
-import numpy as np
 
 
 def test_one_hot_encoding_is_importable_and_callable():

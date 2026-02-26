@@ -31,7 +31,7 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
         ~((df["seconds_count"] > 86400) & (df["is_duplicate_date"]))
     ]
     df = df.drop(columns=["is_duplicate_date", "seconds_count"], errors="ignore")
-    
+
     return df.reset_index(drop=True)
 
 
@@ -41,7 +41,7 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
     for col in WEATHER_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
-        
+
         if col in ("prcp", "snow"):
             df[col] = df[col].fillna(0)
     df = df.dropna(subset=["date"])
@@ -51,7 +51,7 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
     row_count = df.shape[0]
     cols_without_data = cols_with_null[cols_with_null == row_count]
     df = df.drop(columns=cols_without_data.index, errors="ignore")
-    
+
     return df.reset_index(drop=True)
 
 
@@ -60,12 +60,16 @@ def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
     df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
     df["country_id"] = pd.to_numeric(df["country_id"], errors="coerce").astype("Int64")
-    df["first_read_at"] = pd.to_datetime(df["first_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
-    df["last_read_at"] = pd.to_datetime(df["last_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
+    df["first_read_at"] = (
+        pd.to_datetime(df["first_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
+    )
+    df["last_read_at"] = (
+        pd.to_datetime(df["last_read_at"], errors="coerce", utc=True).dt.tz_localize(None)
+    )
     df = df.dropna(subset=["location_id"]).copy()
     df["location_id"] = df["location_id"].astype(int)
     df["country_id"] = df["country_id"].astype(int)
-    
+
     return df.reset_index(drop=True)
 
 
@@ -78,7 +82,7 @@ def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
     df["sensor_id"] = df["sensor_id"].astype(int)
     df["location_id"] = df["location_id"].astype(int)
     df = df.rename(columns={"units": "sensor_units"})
-    
+
     return df.reset_index(drop=True)
 
 
@@ -89,12 +93,14 @@ def _merge_datasets(
     weather: pd.DataFrame
 ) -> pd.DataFrame:
     combined = measurements.merge(metadata, on="sensor_id", how="left", suffixes=("", "_meta"))
-    combined = combined.merge(locations, on="location_id", how="left", suffixes=("", "_location"))
+    combined = combined.merge(
+        locations, on="location_id", how="left", suffixes=("", "_location")
+    )
     combined = combined.merge(weather, left_on="reading_date", right_on="date", how="left")
     combined = combined.drop(columns=["date"], errors="ignore")
     combined = combined.rename(columns={"metric_name": "metric", "timestamp_rollup": "rollup"})
     combined = combined.sort_values(["reading_date", "sensor_id"]).reset_index(drop=True)
-    
+
     return combined
 
 def _data_transform(
@@ -126,14 +132,16 @@ def _data_transform(
     # Determines the minimum threshold of data that needs to exist in order to not be dropped
     ratio = 0.5
     cols_without_data = cols_with_null[cols_with_null >= (row_count * ratio)]
-    pivoted_measurements = pivoted_measurements.drop(columns=cols_without_data.index, errors="ignore")
+    pivoted_measurements = pivoted_measurements.drop(
+        columns=cols_without_data.index, errors="ignore"
+    )
 
     combined = (
         pivoted_measurements
             .merge(weather, left_on="reading_date", right_on="date", how="left")
     )
     combined = combined.drop(columns=["date"], errors="ignore")
-    
+
     return combined
 
 

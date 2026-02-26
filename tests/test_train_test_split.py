@@ -45,7 +45,7 @@ def test_split_dataset_excludes_target_from_features():
         "feature_2": range(5, 10),
         "pm25": range(10, 15)
     })
-    x_train, x_test, y_train, y_test = split_dataset(df, target_col="pm25")
+    x_train, x_test, _y_train, _y_test = split_dataset(df, target_col="pm25")
 
     assert "pm25" not in x_train.columns
     assert "pm25" not in x_test.columns
@@ -70,7 +70,7 @@ def test_split_dataset_respects_test_size():
         "feature_1": range(100),
         "pm25": range(100)
     })
-    x_train, x_test, y_train, y_test = split_dataset(df, target_col="pm25", test_size=0.2)
+    x_train, x_test, _y_train, _y_test = split_dataset(df, target_col="pm25", test_size=0.2)
 
     assert len(x_test) == 20
     assert len(x_train) == 80
