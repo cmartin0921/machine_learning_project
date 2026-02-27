@@ -29,6 +29,12 @@ def split_dataset(
 
     # Isolate the independent variables (Features) and dependent variable (Target)
     x_features = dataframe.drop(columns=[target_col])
+    
+    # Drop datetime columns - RandomForest can't handle them
+    datetime_cols = x_features.select_dtypes(include=["datetime64[ns]", "datetime64[ns, UTC]"]).columns.tolist()
+    if datetime_cols:
+        x_features = x_features.drop(columns=datetime_cols)
+    
     y_target = dataframe[target_col]
 
     # Perform the split
