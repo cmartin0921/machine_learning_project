@@ -180,7 +180,8 @@ def _data_transform(
             .merge(weather, left_on="reading_date", right_on="date", how="left")
     )
     combined = combined.drop(columns=["date"], errors="ignore")
-    combined = combined[combined["pm25"].notna()]
+    if "pm25" in combined.columns:
+        combined = combined[combined["pm25"].notna()]
 
     return combined
 
@@ -211,7 +212,8 @@ def clean_data(
 
     combined = _data_transform(measurements, weather)
 
-    combined = combined[combined["pm25"].notna()]
+    if "pm25" in combined.columns:
+        combined = combined[combined["pm25"].notna()]
 
     return {
         "locations": locations,

@@ -3,9 +3,9 @@ from pathlib import Path
 
 
 def setup_logger(
-        log_file_path: Path,
-        name: str,
-        level: int = logging.DEBUG
+    log_file_path: Path,
+    name: str,
+    level: int = logging.DEBUG,
 ) -> logging.Logger:
 
     logger = logging.getLogger(name)
@@ -13,7 +13,7 @@ def setup_logger(
     if not logger.handlers:
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
         logger.setLevel(level)
@@ -26,4 +26,3 @@ def setup_logger(
         logger.addHandler(handler)
 
     return logger
-

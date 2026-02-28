@@ -4,11 +4,9 @@
 
 Outputs (logs, intermediate files, reports) are written under the `logs/`, `data/`, and `reports/` directories.
 
+Note: runtime logs are written to `logs/ml_project.log` — inspect this file for detailed execution information and troubleshooting.
+
 This document provides a detailed description of each function used in `main.py`, explaining what data is edited, transformed, and created at each step of the machine learning pipeline.
-
-### Running tests
-
-Run the test suite with `pytest`. From the project root:
 
 ### Running tests
 

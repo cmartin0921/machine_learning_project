@@ -6,7 +6,13 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 
-def evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None):
+def _save_fig(fig, path):
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return str(path)
+
+
+def evaluate_model(model, model_params, x_test, y_test, reports_dir, *, logger=None):
     """
     Evaluate a trained model on test data.
     Returns a structured dict with metrics + plot paths.
@@ -48,10 +54,7 @@ def evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None
         ax.set_title("Actual vs Predicted")
 
         plot_path = reports_path / "actual_vs_predicted.png"
-        fig.savefig(plot_path, bbox_inches="tight")
-        plt.close(fig)
-
-        plots["actual_vs_predicted"] = str(plot_path)
+        plots["actual_vs_predicted"] = _save_fig(fig, plot_path)
 
         # ---------- plot 2: Predicted vs Residuals ----------
         fig, ax = plt.subplots()
@@ -64,10 +67,7 @@ def evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None
         ax.set_title("Predicted vs Residuals")
 
         plot_path = reports_path / "predicted_vs_residuals.png"
-        fig.savefig(plot_path, bbox_inches="tight")
-        plt.close(fig)
-
-        plots["predicted_vs_residuals"] = str(plot_path)
+        plots["predicted_vs_residuals"] = _save_fig(fig, plot_path)
 
         # ---------- plot 3: Residual distribution ----------
         fig, ax = plt.subplots()
@@ -78,10 +78,7 @@ def evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None
         ax.set_title("Residual Distribution")
 
         plot_path = reports_path / "residual_distribution.png"
-        fig.savefig(plot_path, bbox_inches="tight")
-        plt.close(fig)
-
-        plots["residual_distribution"] = str(plot_path)
+        plots["residual_distribution"] = _save_fig(fig, plot_path)
 
         # ---------- plot 4: Q-Q plot ----------
         fig, ax = plt.subplots()
@@ -90,10 +87,7 @@ def evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None
         ax.set_title("Q-Q Plot (Residuals)")
 
         plot_path = reports_path / "qq_plot_residuals.png"
-        fig.savefig(plot_path, bbox_inches="tight")
-        plt.close(fig)
-
-        plots["qq_plot_residuals"] = str(plot_path)
+        plots["qq_plot_residuals"] = _save_fig(fig, plot_path)
 
     else:
         raise ValueError(
