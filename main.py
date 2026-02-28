@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from dotenv import load_dotenv
+from pprint import pprint
 import yaml
 
 from openaq import OpenAQ
@@ -11,7 +12,7 @@ from ml_project.feature_engineering import (
     generate_features, handle_outliers, detect_outliers, impute_missing_data,
     one_hot_encoding, scaling
 )
-from ml_project.models import create_model, train_model
+from ml_project.models import create_model
 from ml_project.evaluation import evaluate_model
 from ml_project.data.MeteoStatClient import MeteoStatClient
 
@@ -131,9 +132,9 @@ def main():
     logger.info("Model created and training complete: %s", type(model).__name__ if model else "None")
     
     # Evaluate the model
-    # metrics = evaluate_model(trained_model, (x_test, y_test))
     metrics = evaluate_model(model, model_params, x_test_scaled, y_test, directory_paths_dict["reports"])
     logger.info("Model evaluation complete: %s", metrics)
+    pprint(metrics)
 
 if __name__ == "__main__":
     main()
