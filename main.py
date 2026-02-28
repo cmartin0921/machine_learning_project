@@ -127,7 +127,7 @@ def main():
     model_params = model_cfg.get("model_params", {})
     logger.info("Creating model with params:\n%s", yaml.dump(model_params, default_flow_style=False))
     
-    # Create the model
+    # Create and train the model
     model = create_model(model_params, x_train_scaled, y_train)
     logger.info("Model created and training complete: %s", type(model).__name__ if model else "None")
     
