@@ -5,6 +5,16 @@ from ml_project.utils import write_csv
 logger = logging.getLogger("ml_project")
 
 def meteostat_extract_data(client, cfg, directory_paths_dict):
+    """Extract daily weather data using a MeteoStat client and write CSV.
+
+    Parameters
+    - client: object exposing `extract_daily_data(cfg)` generator.
+    - cfg (dict): configuration with `outputs` and other request params.
+    - directory_paths_dict: mapping with `root` path for output files.
+
+    Side effects
+    - Writes daily weather records to the configured CSV file.
+    """
 
     logger.info("Starting to extract MeteoStat weather data.")
     

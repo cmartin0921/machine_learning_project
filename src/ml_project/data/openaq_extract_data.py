@@ -18,6 +18,19 @@ def openaq_extract_data(
     open_aq_cfg: Dict,
     directory_paths_dict
 ):
+        """Extract locations and sensor measurements and write to CSV.
+
+        Parameters
+        - client: OpenAQ client instance providing `locations` and
+            `measurements` endpoints.
+        - open_aq_cfg (dict): Configuration dictionary containing
+            `data`, `time`, `paging`, and `outputs` entries.
+        - directory_paths_dict (Path-like): Paths used for output files.
+
+        The function writes three CSV files (locations, sensors metadata,
+        and sensors measurements) under the configured output directory.
+        It yields no value; side effects are writing files to disk.
+        """
 
     sensor_full_set = set()
     # Step 1: Extract locations and sensors (within said locations) metadata.
@@ -81,6 +94,14 @@ def _iter_locations(
     client,
     open_aq_cfg: Dict
 ) -> Iterable[Tuple[dict, List[dict]]]:
+    """Yield tuples of (location_data, sensor_list) for coordinates.
+
+    Each yielded item contains a dictionary of location metadata and a
+    list of sensor metadata dictionaries for that location. Locations
+    are filtered so that only those with recent data (after
+    `open_aq_cfg['time']['start']`) are yielded.
+    """
+
     min_dt = open_aq_cfg["time"]["start"].replace(tzinfo=timezone.utc)
 
     for coord in open_aq_cfg["data"]["coordinates"]:
@@ -163,7 +184,13 @@ def _iter_sensor_measurements(
         open_aq_cfg: Dict,
         sensor_id: int
 ) -> Iterable[dict]:
-    
+    """Yield measurement dicts for a given `sensor_id`.
+
+    Each yielded dictionary contains measurement metadata such as the
+    rollup timestamps, value, metric name, and units. Pagination and
+    basic retry handling for common OpenAQ client errors are performed
+    internally.
+    """
     page = 1
     while True:
         logger.info("Fetching data for sensor ID %d between %s and %s at %s granularity on page %d", sensor_id, open_aq_cfg["time"]["start"], open_aq_cfg["time"]["end"], open_aq_cfg["time"]["rollup"], page)
@@ -226,7 +253,12 @@ def _iter_sensor_measurements(
 def _extract_sensors_from_location(
     location_result
 ) -> List[dict]:
-    
+    """Return a list of sensor metadata dicts for a location result.
+
+    The returned list contains dictionaries with fields `sensor_id`,
+    `measurement`, `measurement_name`, `units`, and `location_id`.
+    """
+
     sensor_location_list = []
     for s in location_result.sensors:
         sensor_location_list.append({

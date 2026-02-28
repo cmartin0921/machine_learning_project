@@ -3,6 +3,15 @@ import pandas as pd
 WEATHER_COLS = ["tavg", "tmin", "tmax", "prcp", "snow", "wdir", "wspd", "wpgt", "pres", "tsun"]
 
 def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean and normalize sensor measurements DataFrame.
+
+    Converts types, drops rows with missing critical fields, removes
+    clearly invalid readings (e.g. negative particulate values),
+    deduplicates and filters out long-interval duplicates.
+
+    Returns a cleaned DataFrame ready for merging.
+    """
+
     df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
     df["value"] = pd.to_numeric(df["value"], errors="coerce")
     df["datetime_from"] = pd.to_datetime(df["datetime_from"], errors="coerce", utc=True)
@@ -36,6 +45,13 @@ def _clean_measurements(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean MeteoStat daily weather DataFrame.
+
+    Normalizes the `date` column, coerces numeric weather columns and
+    fills precipitation/snow missing values with zero. Drops columns
+    that contain no data.
+    """
+
     df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_localize(None)
 
     for col in WEATHER_COLS:
@@ -56,6 +72,12 @@ def _clean_weather(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean location metadata DataFrame.
+
+    Coerces numeric identifiers and coordinates, parses timestamps and
+    drops rows missing `location_id`.
+    """
+
     df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
     df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
@@ -74,6 +96,12 @@ def _clean_locations(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_sensor_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean sensor metadata DataFrame.
+
+    Normalizes sensor and location identifiers and lowercases
+    measurement names. Renames the `units` column to `sensor_units`.
+    """
+
     df["sensor_id"] = pd.to_numeric(df["sensor_id"], errors="coerce").astype("Int64")
     df["location_id"] = pd.to_numeric(df["location_id"], errors="coerce").astype("Int64")
     df["measurement_name"] = df["measurement_name"].astype(str).str.lower().str.strip()
@@ -92,6 +120,12 @@ def _merge_datasets(
     locations: pd.DataFrame,
     weather: pd.DataFrame
 ) -> pd.DataFrame:
+    """Merge cleaned measurements, metadata, locations and weather.
+
+    Returns a combined DataFrame with context columns and sorted by
+    `reading_date` and `sensor_id`.
+    """
+
     combined = measurements.merge(metadata, on="sensor_id", how="left", suffixes=("", "_meta"))
     combined = combined.merge(
         locations, on="location_id", how="left", suffixes=("", "_location")
@@ -107,7 +141,12 @@ def _data_transform(
     measurements: pd.DataFrame,
     weather: pd.DataFrame
 ) -> pd.DataFrame:
+    """Pivot measurements to daily metrics and merge with weather.
 
+    Produces a per-day aggregated table of measurements (one row per
+    date) with sensor counts and joined weather features. Filters out
+    days without `pm25` values.
+    """
     pivoted_measurements = (
         measurements
         .pivot_table(
@@ -141,6 +180,7 @@ def _data_transform(
             .merge(weather, left_on="reading_date", right_on="date", how="left")
     )
     combined = combined.drop(columns=["date"], errors="ignore")
+    combined = combined[combined["pm25"].notna()]
 
     return combined
 
