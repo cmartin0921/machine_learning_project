@@ -18,20 +18,19 @@ def openaq_extract_data(
     open_aq_cfg: Dict,
     directory_paths_dict
 ):
-        """Extract locations and sensor measurements and write to CSV.
+    """Extract locations and sensor measurements and write to CSV.
 
-        Parameters
-        - client: OpenAQ client instance providing `locations` and
-            `measurements` endpoints.
-        - open_aq_cfg (dict): Configuration dictionary containing
-            `data`, `time`, `paging`, and `outputs` entries.
-        - directory_paths_dict (Path-like): Paths used for output files.
+    Parameters
+    - client: OpenAQ client instance providing `locations` and
+        `measurements` endpoints.
+    - open_aq_cfg (dict): Configuration dictionary containing
+        `data`, `time`, `paging`, and `outputs` entries.
+    - directory_paths_dict (Path-like): Paths used for output files.
 
-        The function writes three CSV files (locations, sensors metadata,
-        and sensors measurements) under the configured output directory.
-        It yields no value; side effects are writing files to disk.
-        """
-
+    The function writes three CSV files (locations, sensors metadata,
+    and sensors measurements) under the configured output directory.
+    It yields no value; side effects are writing files to disk.
+    """
     sensor_full_set = set()
     # Step 1: Extract locations and sensors (within said locations) metadata.
     # The data for locations is written to a .csv file. Furthermore, a list
