@@ -211,6 +211,8 @@ def clean_data(
 
     combined = _data_transform(measurements, weather)
 
+    combined = combined[combined["pm25"].notna()]
+
     return {
         "locations": locations,
         "sensors_metadata": metadata,
