@@ -1,6 +1,25 @@
 # ML Project Pipeline Documentation
 
+## Quickstart — Run `main.py`
+
+Outputs (logs, intermediate files, reports) are written under the `logs/`, `data/`, and `reports/` directories.
+
+Note: runtime logs are written to `logs/ml_project.log` — inspect this file for detailed execution information and troubleshooting.
+
 This document provides a detailed description of each function used in `main.py`, explaining what data is edited, transformed, and created at each step of the machine learning pipeline.
+
+### Running tests
+
+Run the test suite with `pytest`. Examples from the project root:
+
+```bash
+# Run all tests (recommended)
+pytest tests/ -q
+
+# To run a single test file or a single test:
+pytest tests/test_clean_data.py -q
+pytest tests/test_clean_data.py::test_function_name -q
+```
 
 ---
 
@@ -303,55 +322,83 @@ x_test_scaled, _ = scaling(x_test, existing_scaler=scaler)
 
 ## 10. Model Creation & Training
 
-### `create_model(model_params)`
+### `create_model(model_params, x_train, y_train)`
 
-**Purpose:** Instantiate the ML model based on configuration parameters.
+**Purpose:** Build **and fit** a regression model using hyperparameters from `configs/model.yaml`.
 
-**Input:** Model parameters from `configs/model.yaml`
+**Supported models:**
+- `random_forest` → `sklearn.ensemble.RandomForestRegressor`
 
-**Output:** Model object (currently returns `None` - placeholder for implementation)
+**Inputs:**
+- `model_params` (`dict`): Model configuration values. Keys used:
+  - `model_type` (default: `"random_forest"`)
+  - `n_estimators` (required for `random_forest`)
+  - `max_depth` (optional)
+  - `random_state` (optional)
+  - `n_jobs` (optional)
+- `x_train` (array-like / `pd.DataFrame`): Training features, shape `(n_samples, n_features)`
+- `y_train` (array-like / `pd.Series`): Training target, shape `(n_samples,)`
 
-> ⚠️ **Note:** This function is a stub awaiting implementation.
+**Behavior:**
+1. Reads `model_type` from `model_params` (defaults to `"random_forest"`).
+2. Instantiates the corresponding estimator with the provided hyperparameters.
+3. Calls `.fit(x_train, y_train)` and returns the trained model.
 
----
+**Output:** Trained scikit-learn estimator.
 
-### `train_model(model, x_train)`
+**Raises:**
+- `ValueError` if `model_type` is not supported.
+- Scikit-learn validation errors if required params (e.g., `n_estimators`) are missing/invalid.
 
-**Purpose:** Fit the model to the training data.
-
-**Input:**
-- `model`: Model object from `create_model()`
-- `x_train`: Scaled training features
-
-**Output:** Trained model object (currently returns input - placeholder)
-
-> ⚠️ **Note:** This function is a stub awaiting implementation.
+**Example:**
+```python
+model = create_model(model_params, x_train_scaled, y_train)
+```
 
 ---
 
 ## 11. Model Evaluation
 
-### `evaluate_model(model, test_data)`
+### `evaluate_model(model, model_params, x_test, y_test, reports_dir, logger=None)`
 
-**Purpose:** Assess model performance on unseen test data.
+**Purpose:** Evaluate a trained regression model on test data, compute metrics, and write diagnostic plots to disk.
 
-**Input:**
-- `model`: Trained model
-- `test_data`: Tuple of `(X_test, y_test)`
+**Inputs:**
+- `model`: Trained scikit-learn estimator (must implement `.predict()`).
+- `model_params` (`dict`): Used to read `model_type` (default: `"random_forest"`).
+- `x_test` (array-like / `pd.DataFrame`): Test features.
+- `y_test` (array-like / `pd.Series`): Ground-truth test target.
+- `reports_dir` (`str` or `Path`): Output directory for plots (created if missing).
+- `logger` (`logging.Logger`, optional): If provided, logs model type, metrics, and plot paths.
 
-**Output:** Dictionary of evaluation metrics (currently placeholder)
+**Metrics returned (for `random_forest`):**
+- `r2` (`sklearn.metrics.r2_score`)
+- `mse` (`sklearn.metrics.mean_squared_error`)
+- `mae` (`sklearn.metrics.mean_absolute_error`)
 
+**Plots saved to `reports_dir`:**
+- `actual_vs_predicted.png` (scatter with 45° reference line)
+- `predicted_vs_residuals.png` (residuals vs predicted with 0-line)
+- `residual_distribution.png` (histogram, 30 bins)
+- `qq_plot_residuals.png` (Q–Q plot of residuals vs normal)
+
+**Output:**
 ```python
 {
-    "metric_1": None,
-    "metric_2": None
+    "model_type": "random_forest",
+    "metrics": {"r2": float, "mse": float, "mae": float},
+    "plots": {
+        "actual_vs_predicted": "path/to/actual_vs_predicted.png",
+        "predicted_vs_residuals": "path/to/predicted_vs_residuals.png",
+        "residual_distribution": "path/to/residual_distribution.png",
+        "qq_plot_residuals": "path/to/qq_plot_residuals.png"
+    }
 }
 ```
 
-> ⚠️ **Note:** This function is a stub awaiting implementation. Expected metrics might include:
-> - RMSE (Root Mean Square Error)
-> - MAE (Mean Absolute Error)
-> - R² Score
+**Raises:**
+- `ValueError` if `model_type` is not supported.
+
 
 ---
 
@@ -439,6 +486,5 @@ Contains model hyperparameters passed to `create_model()`
 | File | Location | Description |
 |------|----------|-------------|
 | `ml_project.log` | `logs/` | Execution logs with timestamps |
-| `temp.csv` | `data/interim/` | Encoded DataFrame saved for inspection |
 
 ---
