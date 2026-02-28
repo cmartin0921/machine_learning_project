@@ -127,15 +127,12 @@ def main():
     logger.info("Creating model with params:\n%s", yaml.dump(model_params, default_flow_style=False))
     
     # Create the model
-    model = create_model(model_params)
-    logger.info("Model created: %s", type(model).__name__ if model else "None")
+    model = create_model(model_params, x_train_scaled, y_train)
+    logger.info("Model created and training complete: %s", type(model).__name__ if model else "None")
     
-    # Train the model
-    trained_model = train_model(model, x_train)
-    logger.info("Model training complete")
-
     # Evaluate the model
-    metrics = evaluate_model(trained_model, (x_test, y_test))
+    # metrics = evaluate_model(trained_model, (x_test, y_test))
+    metrics = evaluate_model(model, model_params, x_test_scaled, y_test, directory_paths_dict["reports"])
     logger.info("Model evaluation complete: %s", metrics)
 
 if __name__ == "__main__":
